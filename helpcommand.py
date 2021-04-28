@@ -4,7 +4,8 @@ from discord.ext import commands
 import config
 
 
-class HelpCommand(commands.Cog):
+class HelpCommand(commands.Cog, name="Help Command"):
+    """The Help Command, that's it"""
     def __init__(self, bot):
         self.bot = bot
 
@@ -45,7 +46,8 @@ class HelpCommand(commands.Cog):
                                   color=discord.Color(0xD262BA))
             for cmd in sorted(cog.get_commands(), key=lambda x: x.name):
                 if not cmd.hidden:
-                    embed.add_field(name=f"{config.command_prefix}{cmd.name}", value=cmd.short_doc)
+                    desc = cmd.short_doc if cmd.short_doc else "No Description."
+                    embed.add_field(name=f"{config.command_prefix}{cmd.name}", value=desc)
             await ctx.reply(embed=embed)
         # elif arg.lower() in [c.name for c in self.bot.commands]:
         else:

@@ -2,3 +2,4 @@ temp
 config.py
 __pycache__
 .idea
+database.sqlite

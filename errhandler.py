@@ -51,6 +51,10 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
                   str(commanderror).replace("@", "\\@") + "`"
             logger.warning(err)
             await ctx.reply(err)
+        elif isinstance(commanderror, discord.ext.commands.errors.CheckFailure):
+            err = f"{config.emojis['warning']} " + str(commanderror).replace("@", "\\@")
+            logger.warning(err)
+            await ctx.reply(err)
         # elif isinstance(commanderror, discord.ext.commands.errors.CommandInvokeError) and \
         #         isinstance(commanderror.original, improcessing.NonBugError):
         #     await ctx.reply(f"{config.emojis['2exclamation']}" + str(commanderror.original)[:1000].replace("@", "\\@"))

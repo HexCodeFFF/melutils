@@ -4,13 +4,23 @@ import config
 from clogs import logger
 import discord
 from discord.ext import commands
+import database
 
 from errhandler import ErrorHandler
 from helpcommand import HelpCommand
+from funcommands import FunCommands
+from admincommands import AdminCommands
+
+if not os.path.exists(config.temp_dir.rstrip("/")):
+    os.mkdir(config.temp_dir.rstrip("/"))
+for f in glob.glob(f'{config.temp_dir}*'):
+    os.remove(f)
 
 bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True)
 bot.add_cog(ErrorHandler(bot))
 bot.add_cog(HelpCommand(bot))
+bot.add_cog(FunCommands(bot))
+bot.add_cog(AdminCommands(bot))
 
 
 def logcommand(cmd):
@@ -43,8 +53,7 @@ async def on_command_completion(ctx):
 @bot.event
 async def on_ready():
     logger.log(35, f"Logged in as {bot.user.name}!")
-    game = discord.Activity(name=f"with my balls | n,help",
-                            type=discord.ActivityType.playing)
+    game = discord.Activity(name=f"with my balls | {config.command_prefix}help", type=discord.ActivityType.playing)
     await bot.change_presence(activity=game)
 
 
