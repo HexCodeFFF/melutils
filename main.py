@@ -10,6 +10,8 @@ from errhandler import ErrorHandler
 from helpcommand import HelpCommand
 from funcommands import FunCommands
 from admincommands import AdminCommands
+from utilitycommands import UtilityCommands
+from moderation import ModerationCog
 
 if not os.path.exists(config.temp_dir.rstrip("/")):
     os.mkdir(config.temp_dir.rstrip("/"))
@@ -21,6 +23,8 @@ bot.add_cog(ErrorHandler(bot))
 bot.add_cog(HelpCommand(bot))
 bot.add_cog(FunCommands(bot))
 bot.add_cog(AdminCommands(bot))
+bot.add_cog(UtilityCommands(bot))
+bot.add_cog(ModerationCog(bot))
 
 
 def logcommand(cmd):

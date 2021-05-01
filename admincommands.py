@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 
 
-class AdminCommands(commands.Cog):
+class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
     def __init__(self, bot):
         self.bot = bot
 
@@ -29,7 +29,7 @@ class AdminCommands(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def say(self, ctx, channelid: int, *, msg):
+    async def say(self, ctx, channelid: discord.TextChannel, *, msg):
         channel = self.bot.get_channel(channelid)
         if ctx.me.permissions_in(channel).manage_messages:
             asyncio.create_task(ctx.message.delete())
