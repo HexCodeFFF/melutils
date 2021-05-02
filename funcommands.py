@@ -3,6 +3,9 @@ from discord.ext import commands
 
 
 class FunCommands(commands.Cog, name="Fun"):
+    """
+    commands for entertainment
+    """
     def __init__(self, bot):
         self.bot = bot
         self.regionals = {'a': '\N{REGIONAL INDICATOR SYMBOL LETTER A}', 'b': '\N{REGIONAL INDICATOR SYMBOL LETTER B}',
@@ -58,11 +61,6 @@ class FunCommands(commands.Cog, name="Fun"):
         regional_list = [self.regionals[x.lower()] if x.isalnum() or x in ["!", "?"] else x for x in msg]
         regional_output = '\u200b'.join(regional_list)
         await ctx.reply(regional_output)
-
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def testcheck(self, ctx):
-        return
 
 
 '''

@@ -4,6 +4,9 @@ from discord.ext.commands.cooldowns import BucketType
 
 
 class UtilityCommands(commands.Cog, name="Utility"):
+    """
+    miscellaneous utility commands
+    """
     def __init__(self, bot):
         self.bot = bot
 
