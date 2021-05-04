@@ -4,7 +4,6 @@ import config
 from clogs import logger
 import discord
 from discord.ext import commands
-import database
 
 from errhandler import ErrorHandler
 from helpcommand import HelpCommand

@@ -12,6 +12,8 @@ class TimeConverter(commands.Converter):
         self.time_dict = {"h": 3600, "s": 1, "m": 60, "d": 86400, "w": 604800}
 
     async def convert(self, ctx, argument):
+        if argument == "0":  # edge case
+            return 0
         matches = self.time_regex.findall(argument.lower())
         time = 0
         if not matches:

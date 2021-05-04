@@ -78,7 +78,7 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
             #                       f"es](https://github.com/HexCodeFFF/captionbot/issues)")
             await ctx.reply(f"{config.emojis['2exclamation']} `{self.get_full_class_name(commanderror)}: " +
                             str(commanderror)[:128].replace("@", "\\@") + "`",
-                            file=discord.File(tr), embed=embed)
+                            file=discord.File(tr))  # , embed=embed)
 
 
 '''
