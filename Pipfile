@@ -8,6 +8,7 @@ name = "pypi"
 coloredlogs = "*"
 humanize = "*"
 aiosqlite = "*"
+aioscheduler = "*"
 
 [dev-packages]
 

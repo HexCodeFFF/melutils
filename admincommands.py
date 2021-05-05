@@ -1,7 +1,11 @@
 import asyncio
 import typing
+from datetime import datetime, timezone
+
 import discord
 from discord.ext import commands
+from timeconverter import TimeConverter
+import scheduler
 
 
 class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
@@ -29,12 +33,24 @@ class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
 
     @commands.command()
     @commands.is_owner()
-    async def say(self, ctx, channel: typing.Optional[discord.TextChannel], *, msg):
+    async def say(self, ctx, channel: typing.Optional[typing.Union[discord.TextChannel, discord.User]], *, msg):
         if not channel:
             channel = ctx.channel
-        if ctx.me.permissions_in(channel).manage_messages:
+        if ctx.me.permissions_in(ctx.channel).manage_messages:
             asyncio.create_task(ctx.message.delete())
         asyncio.create_task(channel.send(msg))
+
+    @commands.command()
+    @commands.is_owner()
+    async def testschedule(self, ctx, time: TimeConverter):
+        scheduletime = datetime.now(tz=timezone.utc) + time
+        await scheduler.schedule(scheduletime, "debug", {"message": "hello world!"})
+
+    @commands.command()
+    @commands.is_owner()
+    async def schedulemessage(self, ctx, time: TimeConverter, *, message):
+        scheduletime = datetime.now(tz=timezone.utc) + time
+        await scheduler.schedule(scheduletime, "message", ctx.channel.id, message)
 
 
 '''

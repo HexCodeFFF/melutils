@@ -4,7 +4,7 @@ import config
 from clogs import logger
 import discord
 from discord.ext import commands
-
+import scheduler
 from errhandler import ErrorHandler
 from helpcommand import HelpCommand
 from funcommands import FunCommands
@@ -17,13 +17,15 @@ if not os.path.exists(config.temp_dir.rstrip("/")):
 for f in glob.glob(f'{config.temp_dir}*'):
     os.remove(f)
 
-bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True)
+activity = discord.Activity(name=f"with my balls | {config.command_prefix}help", type=discord.ActivityType.playing)
+bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity)
 bot.add_cog(ErrorHandler(bot))
 bot.add_cog(HelpCommand(bot))
 bot.add_cog(FunCommands(bot))
 bot.add_cog(AdminCommands(bot))
 bot.add_cog(UtilityCommands(bot))
 bot.add_cog(ModerationCog(bot))
+bot.add_cog(scheduler.ScheduleInitCog(bot))
 
 
 def logcommand(cmd):
@@ -55,9 +57,11 @@ async def on_command_completion(ctx):
 
 @bot.event
 async def on_ready():
+    scheduler.botcopy = bot
+    # await scheduler.start()
     logger.log(35, f"Logged in as {bot.user.name}!")
-    game = discord.Activity(name=f"with my balls | {config.command_prefix}help", type=discord.ActivityType.playing)
-    await bot.change_presence(activity=game)
+    # game = discord.Activity(name=f"with my balls | {config.command_prefix}help", type=discord.ActivityType.playing)
+    # await bot.change_presence(activity=game)
 
 
 bot.run(config.bot_token)

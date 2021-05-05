@@ -1,5 +1,6 @@
 import re
 from discord.ext import commands
+from datetime import timedelta
 
 
 class TimeConverter(commands.Converter):
@@ -25,4 +26,4 @@ class TimeConverter(commands.Converter):
                 raise commands.BadArgument(f"{k} is an invalid time-key! h/m/s/d/w are valid!")
             except ValueError:
                 raise commands.BadArgument(f"{v} is not a number!")
-        return time
+        return timedelta(seconds=time)

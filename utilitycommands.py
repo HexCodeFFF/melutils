@@ -1,12 +1,20 @@
+import io
+import json
+import re
+from collections import defaultdict
+
 import discord
 from discord.ext import commands
 from discord.ext.commands.cooldowns import BucketType
+
+from clogs import logger
 
 
 class UtilityCommands(commands.Cog, name="Utility"):
     """
     miscellaneous utility commands
     """
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -34,6 +42,38 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 if len(msg.attachments):
                     count += len(msg.attachments)
             await ctx.reply(f"There are {count} media in {channel.mention}.")
+
+    @commands.cooldown(1, 60 * 60 * 24, BucketType.guild)
+    @commands.is_owner()
+    @commands.command()
+    async def emojicount(self, ctx):
+        replystr = f"Gathering emoji statistics for **{ctx.guild.name}**. This may take a while."
+        replymsg = await ctx.reply(replystr)
+        messagecount = 0
+        emojicount = 0
+        async with ctx.channel.typing():
+            emojiregex = r"<a?:\w{2,32}:(\d{18,22})>"
+            counts = defaultdict(int)
+            for channel in ctx.guild.text_channels:
+                logger.debug(f"counting emojis in {channel}")
+
+                if channel.id == 830588015243427890:
+                    continue
+                async for msg in channel.history(limit=None):
+                    if messagecount % 1000 == 0:
+                        await replymsg.edit(content=f"{replystr}\nCurrently scanning:{channel.mention}"
+                                                    f"\nScanned {messagecount} messages.\nFound {emojicount} emojis.\n")
+                    messagecount += 1
+                    for match in re.finditer(emojiregex, msg.content):
+                        emoji = match.group(0)
+                        counts[emoji] += 1
+                        emojicount += 1
+            await replymsg.edit(content=f"{replystr}\nScanned {messagecount} messages.\nFound {emojicount} emojis.\n")
+            sortedcount = {k: v for k, v in sorted(counts.items(), key=lambda item: item[1], reverse=True)}
+            with io.BytesIO() as buf:
+                buf.write(json.dumps(sortedcount, indent=4).encode())
+                buf.seek(0)
+                await ctx.reply(file=discord.File(buf, filename="emojis.json"))
 
 
 '''
