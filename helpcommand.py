@@ -61,23 +61,26 @@ class HelpCommand(commands.Cog, name="Help Command"):
                 return
             embed = discord.Embed(title=config.command_prefix + cmd.name, description=cmd.cog_name,
                                   color=discord.Color(0xEE609C))
-            fields = {}
-            fhelp = []
-            for line in cmd.help.split("\n"):
-                if line.startswith(":"):
-                    if line.split("=")[0].strip(":") in fields:
-                        fields[line.split("=")[0].strip(":")] += "\n" + "=".join(line.split("=")[1:])
+            if cmd.help:
+                fields = {}
+                fhelp = []
+                for line in cmd.help.split("\n"):
+                    if line.startswith(":"):
+                        if line.split("=")[0].strip(":") in fields:
+                            fields[line.split("=")[0].strip(":")] += "\n" + "=".join(line.split("=")[1:])
+                        else:
+                            fields[line.split("=")[0].strip(":")] = "=".join(line.split("=")[1:])
                     else:
-                        fields[line.split("=")[0].strip(":")] = "=".join(line.split("=")[1:])
-                else:
-                    fhelp.append(line)
-            fhelp = "\n".join(fhelp)
-            embed.add_field(name="Command Information", value=fhelp.replace("$", config.command_prefix),
-                            inline=False)
-            for k, v in fields.items():
-                if k == "Param":
-                    k = "Parameters"
-                embed.add_field(name=k, value=v.replace("n,", config.command_prefix), inline=False)
+                        fhelp.append(line)
+                fhelp = "\n".join(fhelp)
+                embed.add_field(name="Command Information", value=fhelp.replace("m.", config.command_prefix),
+                                inline=False)
+                for k, v in fields.items():
+                    if k == "Param":
+                        k = "Parameters"
+                    embed.add_field(name=k, value=v.replace("m.", config.command_prefix), inline=False)
+            else:
+                embed.add_field(name="Command Information", value="This command has no information.")
             if cmd.aliases:
                 embed.add_field(name="Aliases", value=", ".join([config.command_prefix + a for a in cmd.aliases]))
             await ctx.reply(embed=embed)

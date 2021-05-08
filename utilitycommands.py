@@ -2,11 +2,14 @@ import io
 import json
 import re
 from collections import defaultdict
+from datetime import datetime, timezone
 
 import discord
+import humanize
 from discord.ext import commands
 from discord.ext.commands.cooldowns import BucketType
-
+import scheduler
+from timeconverter import TimeConverter
 from clogs import logger
 
 
@@ -43,8 +46,16 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     count += len(msg.attachments)
             await ctx.reply(f"There are {count} media in {channel.mention}.")
 
+    @commands.command(aliases=["remind", "remindme", "messagemein"])
+    async def reminder(self, ctx, when: TimeConverter, *, reminder):
+        scheduletime = datetime.now(tz=timezone.utc) + when
+        await scheduler.schedule(scheduletime, "message",
+                                 {"channel": ctx.author.id, "message": f"Here's your reminder: {reminder}"})
+        now = datetime.now(tz=timezone.utc)
+        remindertext = humanize.precisetime(scheduletime, when=now, format="%.0f")
+        await ctx.reply(f"✔️ I'll remind you {remindertext}.")
+
     @commands.cooldown(1, 60 * 60 * 24, BucketType.guild)
-    @commands.is_owner()
     @commands.command()
     async def emojicount(self, ctx):
         replystr = f"Gathering emoji statistics for **{ctx.guild.name}**. This may take a while."

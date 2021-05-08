@@ -50,7 +50,7 @@ class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
     @commands.is_owner()
     async def schedulemessage(self, ctx, time: TimeConverter, *, message):
         scheduletime = datetime.now(tz=timezone.utc) + time
-        await scheduler.schedule(scheduletime, "message", ctx.channel.id, message)
+        await scheduler.schedule(scheduletime, "message", {"channel": ctx.channel.id, "message": message})
 
 
 '''

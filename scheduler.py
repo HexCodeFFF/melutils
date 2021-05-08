@@ -15,6 +15,8 @@ botcopy = commands.Bot
 
 class ScheduleInitCog(commands.Cog):
     def __init__(self, bot):
+        global botcopy
+        botcopy = bot
         self.bot = bot
         bot.loop.create_task(start())
 
@@ -28,7 +30,7 @@ async def start():
                 data = json.loads(event[3])
                 dt = datetime.fromtimestamp(event[1], tz=timezone.utc)
                 if dt <= datetime.now(tz=timezone.utc):
-                    logger.debug(f"Running missed event #{event[0]}")
+                    logger.debug(f"running missed event #{event[0]}")
                     await run_event(event[0], event[2], data)
                 else:
                     logger.debug(f"scheduling stored event #{event[0]}")
@@ -36,20 +38,32 @@ async def start():
 
 
 async def run_event(dbrowid, eventtype: str, eventdata: dict):
-    logger.debug(f"Running Event #{dbrowid} type {eventtype} data {eventdata}")
-    if eventtype == "message":
-        pass
-        # await botcopy.get_channel(eventsubject).send(message)
-    if dbrowid is not None:
-        async with aiosqlite.connect("database.sqlite") as db:
-            await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
-            await db.commit()
+    try:
+        logger.debug(f"Running Event #{dbrowid} type {eventtype} data {eventdata}")
+        if eventtype == "debug":
+            pass
+        elif eventtype == "message":
+            ch = eventdata["channel"]
+            try:
+                ch = await botcopy.fetch_channel(ch)
+            except discord.errors.NotFound:
+                ch = await botcopy.fetch_user(ch)
+            await ch.send(eventdata["message"])
+        else:
+            logger.error(f"Unknown event type {eventtype} for event {dbrowid}")
+
+        if dbrowid is not None:
+            async with aiosqlite.connect("database.sqlite") as db:
+                await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
+                await db.commit()
+    except Exception as e:
+        logger.error(e, exc_info=(type(e), e, e.__traceback__))
 
 
 async def schedule(time: datetime, eventtype: str, eventdata: dict):
-    assert time.tzinfo is not None
+    assert time.tzinfo is not None  # offset aware datetimes my beloved
     if time <= datetime.now(tz=timezone.utc):
-        logger.debug(f"running event without schedule type {eventtype} data {eventdata}")
+        logger.debug(f"running event now")
         await run_event(None, eventtype, eventdata)
 
     async with aiosqlite.connect("database.sqlite") as db:
