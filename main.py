@@ -17,8 +17,11 @@ if not os.path.exists(config.temp_dir.rstrip("/")):
 for f in glob.glob(f'{config.temp_dir}*'):
     os.remove(f)
 
+intents = discord.Intents.default()
+intents.members = True
 activity = discord.Activity(name=f"with my balls | {config.command_prefix}help", type=discord.ActivityType.playing)
-bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity)
+bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity,
+                   intents=intents)
 bot.add_cog(ErrorHandler(bot))
 bot.add_cog(HelpCommand(bot))
 bot.add_cog(FunCommands(bot))

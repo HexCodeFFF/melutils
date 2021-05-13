@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import discord
@@ -11,6 +12,7 @@ from clogs import logger
 
 scheduler = TimedScheduler(prefer_utc=True)
 botcopy = commands.Bot
+loadedtasks = dict()  # keep track of task objects to cancel if needed.
 
 
 class ScheduleInitCog(commands.Cog):
@@ -31,10 +33,12 @@ async def start():
                 dt = datetime.fromtimestamp(event[1], tz=timezone.utc)
                 if dt <= datetime.now(tz=timezone.utc):
                     logger.debug(f"running missed event #{event[0]}")
+                    loadedtasks[event[0]] = task  # not needed but easier to put this here than to ignore the exception
                     await run_event(event[0], event[2], data)
                 else:
                     logger.debug(f"scheduling stored event #{event[0]}")
-                    scheduler.schedule(run_event(event[0], event[2], data), dt.replace(tzinfo=None))
+                    task = scheduler.schedule(run_event(event[0], event[2], data), dt.replace(tzinfo=None))
+                    loadedtasks[event[0]] = task
 
 
 async def run_event(dbrowid, eventtype: str, eventdata: dict):
@@ -49,6 +53,16 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
             except discord.errors.NotFound:
                 ch = await botcopy.fetch_user(ch)
             await ch.send(eventdata["message"])
+        elif eventtype == "unban":
+            guild, member = await asyncio.gather(botcopy.fetch_guild(eventdata["guild"]),
+                                                 botcopy.fetch_user(eventdata["member"]))
+            await asyncio.gather(guild.unban(member, reason="End of temp-ban."),
+                                 member.send(f"You were unbanned in **{guild.name}**."))
+        elif eventtype == "unmute":
+            guild = await botcopy.fetch_guild(eventdata["guild"])
+            member = await guild.fetch_member(eventdata["member"])
+            await asyncio.gather(member.remove_roles(discord.Object(eventdata["mute_role"])),
+                                 member.send(f"You were unmuted in **{guild.name}**."))
         else:
             logger.error(f"Unknown event type {eventtype} for event {dbrowid}")
 
@@ -56,6 +70,7 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
             async with aiosqlite.connect("database.sqlite") as db:
                 await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
                 await db.commit()
+        del loadedtasks[dbrowid]
     except Exception as e:
         logger.error(e, exc_info=(type(e), e, e.__traceback__))
 
@@ -71,6 +86,18 @@ async def schedule(time: datetime, eventtype: str, eventdata: dict):
                               (time.timestamp(), eventtype, json.dumps(eventdata))) as cursor:
             lri = cursor.lastrowid
             timef = time.replace(tzinfo=timezone.utc).replace(tzinfo=None)
-            scheduler.schedule(run_event(lri, eventtype, eventdata), timef)
+            task = scheduler.schedule(run_event(lri, eventtype, eventdata), timef)
+            loadedtasks[lri] = task
             logger.debug(f"scheduled event #{lri} for {time}")
+            # logger.debug(loadedtasks)
         await db.commit()
+    return lri
+
+
+async def canceltask(dbrowid: int):
+    scheduler.cancel(loadedtasks[dbrowid])
+    async with aiosqlite.connect("database.sqlite") as db:
+        await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
+        await db.commit()
+    del loadedtasks[dbrowid]
+    logger.debug(f"Cancelled task {dbrowid}")

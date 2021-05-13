@@ -78,9 +78,9 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
             # with open(tr, "w+", encoding="UTF-8") as t:
 
             with io.BytesIO() as buf:
-                buf.write(trheader + ''.join(
+                buf.write(bytes(trheader + ''.join(
                     traceback.format_exception(etype=type(commanderror), value=commanderror,
-                                               tb=commanderror.__traceback__)))
+                                               tb=commanderror.__traceback__)), encoding='utf8'))
                 buf.seek(0)
                 await ctx.reply(
                     f"{config.emojis['2exclamation']} `{self.get_full_class_name(commanderror)}: {errorstring}`",

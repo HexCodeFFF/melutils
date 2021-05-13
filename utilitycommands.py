@@ -67,7 +67,6 @@ class UtilityCommands(commands.Cog, name="Utility"):
             counts = defaultdict(int)
             for channel in ctx.guild.text_channels:
                 logger.debug(f"counting emojis in {channel}")
-
                 if channel.id == 830588015243427890:
                     continue
                 async for msg in channel.history(limit=None):
