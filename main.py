@@ -9,6 +9,7 @@ from errhandler import ErrorHandler
 from helpcommand import HelpCommand
 from funcommands import FunCommands
 from admincommands import AdminCommands
+from modlog import ModLogInitCog
 from utilitycommands import UtilityCommands
 from moderation import ModerationCog
 
@@ -29,6 +30,7 @@ bot.add_cog(AdminCommands(bot))
 bot.add_cog(UtilityCommands(bot))
 bot.add_cog(ModerationCog(bot))
 bot.add_cog(scheduler.ScheduleInitCog(bot))
+bot.add_cog(ModLogInitCog(bot))
 
 
 def logcommand(cmd):

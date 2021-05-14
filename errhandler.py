@@ -84,7 +84,7 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
                 buf.seek(0)
                 await ctx.reply(
                     f"{config.emojis['2exclamation']} `{self.get_full_class_name(commanderror)}: {errorstring}`",
-                    file=discord.File(buf))  # , embed=embed)
+                    file=discord.File(buf, filename="traceback.txt"))  # , embed=embed)
 
 
 '''

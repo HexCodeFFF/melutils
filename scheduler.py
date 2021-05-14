@@ -5,7 +5,7 @@ import discord
 from aioscheduler import TimedScheduler
 import aiosqlite
 from datetime import datetime, timezone
-
+import modlog
 from discord.ext import commands
 
 from clogs import logger
@@ -44,8 +44,13 @@ async def start():
 async def run_event(dbrowid, eventtype: str, eventdata: dict):
     try:
         logger.debug(f"Running Event #{dbrowid} type {eventtype} data {eventdata}")
+        if dbrowid is not None:
+            async with aiosqlite.connect("database.sqlite") as db:
+                await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
+                await db.commit()
+        del loadedtasks[dbrowid]
         if eventtype == "debug":
-            pass
+            logger.debug("Hello world! (debug event)")
         elif eventtype == "message":
             ch = eventdata["channel"]
             try:
@@ -57,20 +62,17 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
             guild, member = await asyncio.gather(botcopy.fetch_guild(eventdata["guild"]),
                                                  botcopy.fetch_user(eventdata["member"]))
             await asyncio.gather(guild.unban(member, reason="End of temp-ban."),
-                                 member.send(f"You were unbanned in **{guild.name}**."))
+                                 member.send(f"You were unbanned in **{guild.name}**."),
+                                 modlog.modlog(f"{member.mention} was automatically unbanned.", guild.id))
         elif eventtype == "unmute":
             guild = await botcopy.fetch_guild(eventdata["guild"])
             member = await guild.fetch_member(eventdata["member"])
             await asyncio.gather(member.remove_roles(discord.Object(eventdata["mute_role"])),
-                                 member.send(f"You were unmuted in **{guild.name}**."))
+                                 member.send(f"You were unmuted in **{guild.name}**."),
+                                 modlog.modlog(f"{member.mention} was automatically unmuted.", guild.id))
         else:
             logger.error(f"Unknown event type {eventtype} for event {dbrowid}")
 
-        if dbrowid is not None:
-            async with aiosqlite.connect("database.sqlite") as db:
-                await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
-                await db.commit()
-        del loadedtasks[dbrowid]
     except Exception as e:
         logger.error(e, exc_info=(type(e), e, e.__traceback__))
 
