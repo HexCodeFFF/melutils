@@ -490,6 +490,44 @@ class ModerationCog(commands.Cog, name="Moderation"):
             logger.debug("pass")
         await on_warn(member, points)  # this handles autopunishments
 
+    @commands.command(aliases=["ow", "transferwarn"])
+    @mod_only()
+    async def oldwarn(self, ctx, member: discord.Member, day: int, month: int, year: int,
+                      points: typing.Optional[float] = 1, *, reason="No reason provided."):
+        """
+        Creates a warn for a member issued at a custom date. Useful for transferring old warns.
+
+        :Usage=m.oldwarn `member` `dd` `mm` `yyyy` `(points)` `(reason)`
+        :Param=member - the member to warn.
+        :Param=day - part of the date
+        :Param=month - part of the date
+        :Param=year - part of the date
+        :Param=points (optional, default 1) - the amount of points this warn is worth. think of it as a warn weight.
+        :Param=reason (optional) - the reason for warning the member.
+        """
+        assert points > 0
+        if points > 1:
+            points = round(points, 1)
+        now = datetime(day=day, month=month, year=year, tzinfo=timezone.utc)
+        async with aiosqlite.connect("database.sqlite") as db:
+            await db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
+                             "VALUES (?, ?, ?, ?, ?, ?)",
+                             (ctx.guild.id, member.id, ctx.author.id,
+                              int(now.timestamp()), reason, points))
+            await db.commit()
+        await ctx.reply(
+            f"Created warn on {humanize.naturaldate(now)} for {member.mention} with {points} infraction "
+            f"point{'' if points == 1 else 's'} for: `{discord.utils.escape_mentions(reason)}`")
+        await modlog.modlog(
+            f"{ctx.author.mention} created warn on {humanize.naturaldate(now)} for {member.mention} with {points} "
+            f"infraction point{'' if points == 1 else 's'} for: "
+            f"`{discord.utils.escape_mentions(reason)}`", ctx.guild.id)
+        # try:
+        #     await member.send(f"You were warned in {ctx.guild.name} for `{discord.utils.escape_mentions(reason)}`.")
+        # except (discord.Forbidden, discord.HTTPException, AttributeError):
+        #     logger.debug("pass")
+        await on_warn(member, points)  # this handles autopunishments
+
     @commands.command(aliases=["warnings", "listwarns", "listwarn", "ws"])
     @mod_only()
     async def warns(self, ctx, member: discord.Member, page: int = 1, show_deleted: bool = False):
@@ -512,7 +550,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 now = datetime.now(tz=timezone.utc)
                 async for warn in cursor:
                     issuedby = await self.bot.fetch_user(warn[1])
-                    issuedat = humanize.naturaltime(datetime.fromtimestamp(warn[2], tz=timezone.utc), when=now)
+                    issuedat = datetime.fromtimestamp(warn[2], tz=timezone.utc)
                     reason = warn[3]
                     points = warn[5]
                     embed.add_field(name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
@@ -520,7 +558,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                     value=
                                     f"Reason: {reason}\n"
                                     f"Issued by: {issuedby.mention}\n"
-                                    f"Issued {issuedat}")
+                                    f"Issued {humanize.naturaltime(issuedat, when=now)} "
+                                    f"({humanize.naturaldate(issuedat)})")
             async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
                                   (member.id, ctx.guild.id)) as cur:
                 warncount = (await cur.fetchone())[0]
