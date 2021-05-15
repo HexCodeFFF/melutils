@@ -107,21 +107,20 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     ctx.message.delete()
                 )
                 return
-            elif ctx.message.reference:
-                if ctx.author.permissions_in(ctx.channel).manage_messages:
-                    outattachments = []
-                    for att in ctx.message.reference.resolved.attachments:
-                        outattachments.append(await att.to_file(spoiler=True))
-                    embed = discord.Embed().set_author(name=ctx.message.reference.resolved.author.display_name,
-                                                       icon_url=ctx.message.reference.resolved.author.avatar_url)
-                    content = f"|| {ctx.message.reference.resolved.content} ||" if ctx.message.reference.resolved.content \
-                        else ""
-                    await asyncio.gather(
-                        ctx.send(content=content, files=outattachments, embed=embed),
-                        ctx.message.delete(),
-                        ctx.message.reference.resolved.delete()
-                    )
-                    return
+            elif ctx.message.reference and ctx.author.permissions_in(ctx.channel).manage_messages:
+                outattachments = []
+                for att in ctx.message.reference.resolved.attachments:
+                    outattachments.append(await att.to_file(spoiler=True))
+                embed = discord.Embed().set_author(name=ctx.message.reference.resolved.author.display_name,
+                                                   icon_url=ctx.message.reference.resolved.author.avatar_url)
+                content = f"|| {ctx.message.reference.resolved.content} ||" if ctx.message.reference.resolved.content \
+                    else ""
+                await asyncio.gather(
+                    ctx.send(content=content, files=outattachments, embed=embed),
+                    ctx.message.delete(),
+                    ctx.message.reference.resolved.delete()
+                )
+                return
             await ctx.reply("❌ no content to spoiler or no replied message to spoiler.")
 
 

@@ -70,6 +70,15 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
             await asyncio.gather(member.remove_roles(discord.Object(eventdata["mute_role"])),
                                  member.send(f"You were unmuted in **{guild.name}**."),
                                  modlog.modlog(f"{member.mention} was automatically unmuted.", guild.id))
+        elif eventtype == "un_thin_ice":
+            guild = await botcopy.fetch_guild(eventdata["guild"])
+            member = await guild.fetch_member(eventdata["member"])
+            await asyncio.gather(member.remove_roles(discord.Object(eventdata["thin_ice_role"])),
+                                 member.send(f"Your thin ice has expired in **{guild.name}**."),
+                                 modlog.modlog(f"{member.mention}'s thin ice has expired.", guild.id))
+            async with aiosqlite.connect("database.sqlite") as db:
+                await db.execute("DELETE FROM thin_ice WHERE guild=? and user=?", (guild.id, member.id))
+                await db.commit()
         else:
             logger.error(f"Unknown event type {eventtype} for event {dbrowid}")
 

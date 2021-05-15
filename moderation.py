@@ -131,36 +131,60 @@ async def mute_action(member: discord.Member, mute_length: typing.Union[timedelt
 
 async def on_warn(member: discord.Member, issued_points: float):
     async with aiosqlite.connect("database.sqlite") as db:
-        # select all from punishments where the sum of warnings in the punishment range fits the warn_count thing
-        # this thing is a mess but should return 1 or 0 punishments if needed
-        monstersql = "SELECT *, (SELECT SUM(points) FROM warnings WHERE (warn_timespan=0 OR (:now-warn_timespan)" \
-                     "<warnings.issuedat) AND warnings.server=:guild AND user=:user AND deactivated=0) pointstotal " \
-                     "FROM auto_punishment WHERE pointstotal >= warn_count AND warn_count > (pointstotal-" \
-                     ":pointsjustgained) AND guild=:guild ORDER BY punishment_duration, punishment_type DESC LIMIT 1"
-        params = {"now": datetime.now(tz=timezone.utc).timestamp(), "pointsjustgained": issued_points,
-                  "guild": member.guild.id, "user": member.id}
-        async with db.execute(monstersql, params) as cur:
-            punishment = await cur.fetchone()
-        if punishment is not None:
-            logger.debug(punishment)
-            punishment_types = {
-                "ban": ban_action,
-                "mute": mute_action
-            }
-            func = punishment_types[punishment[2]]
-            duration = None if punishment[3] == 0 else timedelta(seconds=punishment[3])
-            timespan_text = "total" if punishment[4] == 0 else \
-                f"within {humanize.precisedelta(punishment[4])}"
-            await func(member, duration, f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
-            punishment_type_future_tense = {
-                "ban": "banned",
-                "mute": "muted"
-            }
-            punishment_text = "permanently" if duration.total_seconds() == 0 else \
-                f"for {humanize.precisedelta(duration)}"
-            await modlog.modlog(f"{member.mention} has been automatically {punishment_type_future_tense[punishment[2]]}"
-                                f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
-                                member.guild.id)
+        async with db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
+                              (member.guild.id,)) as cur:
+            thin_ice_role = await cur.fetchone()
+        if thin_ice_role is not None and thin_ice_role[0] is not None and thin_ice_role[0] in [role.id for role in
+                                                                                               member.roles]:
+            await db.execute("UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice+? WHERE guild=? AND user=?",
+                             (issued_points, member.guild.id, member.id))
+            await db.commit()
+            threshold = thin_ice_role[1]
+            async with db.execute("SELECT warns_on_thin_ice FROM thin_ice WHERE guild=? AND user=?",
+                                  (member.guild.id, member.id)) as cur:
+                warns_on_thin_ice = (await cur.fetchone())[0]
+            if warns_on_thin_ice >= threshold:
+                await ban_action(member, None, f"Automatically banned for receiving more than {threshold}"
+                                               f" points on thin ice.")
+                await modlog.modlog(f"{member.mention} was automatically banned for receiving more than {threshold} "
+                                    f"points on thin ice.", member.guild.id)
+                await db.execute("UPDATE thin_ice SET warns_on_thin_ice = 0 WHERE guild=? AND user=?",
+                                 (member.guild.id, member.id))
+                await db.commit()
+
+        else:
+            # select all from punishments where the sum of warnings in the punishment range fits the warn_count thing
+            # this thing is a mess but should return 1 or 0 punishments if needed
+            monstersql = "SELECT *, (SELECT SUM(points) FROM warnings WHERE (warn_timespan=0 OR (:now-warn_timespan)" \
+                         "<warnings.issuedat) AND warnings.server=:guild AND user=:user AND deactivated=0) pointstotal " \
+                         "FROM auto_punishment WHERE pointstotal >= warn_count AND warn_count > (pointstotal-" \
+                         ":pointsjustgained) AND guild=:guild ORDER BY punishment_duration, punishment_type DESC LIMIT 1"
+            params = {"now": datetime.now(tz=timezone.utc).timestamp(), "pointsjustgained": issued_points,
+                      "guild": member.guild.id, "user": member.id}
+            async with db.execute(monstersql, params) as cur:
+                punishment = await cur.fetchone()
+            if punishment is not None:
+                logger.debug(punishment)
+                punishment_types = {
+                    "ban": ban_action,
+                    "mute": mute_action
+                }
+                func = punishment_types[punishment[2]]
+                duration = None if punishment[3] == 0 else timedelta(seconds=punishment[3])
+                timespan_text = "total" if punishment[4] == 0 else \
+                    f"within {humanize.precisedelta(punishment[4])}"
+                await func(member, duration,
+                           f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
+                punishment_type_future_tense = {
+                    "ban": "banned",
+                    "mute": "muted"
+                }
+                punishment_text = "permanently" if duration.total_seconds() == 0 else \
+                    f"for {humanize.precisedelta(duration)}"
+                await modlog.modlog(
+                    f"{member.mention} has been automatically {punishment_type_future_tense[punishment[2]]}"
+                    f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
+                    member.guild.id)
 
 
 class ModerationCog(commands.Cog, name="Moderation"):
@@ -198,26 +222,37 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 async for row in cur:
                     await scheduler.canceltask(row[0])
                     actuallycancelledanytasks = True
+            async with db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
+                thin_ice_role = await cur.fetchone()
+            if thin_ice_role is not None and thin_ice_role[0] is not None:
+                await db.execute("REPLACE INTO thin_ice(user,guild,marked_for_thin_ice,warns_on_thin_ice) VALUES "
+                                 "(?,?,?,?)", (user.id, guild.id, True, 0))
+                await db.commit()
         if actuallycancelledanytasks:
             try:
                 await user.send(f"You were manually unbanned in **{guild.name}**.")
-            except (discord.Forbidden, discord.HTTPException, AttributeError):
+            except (discord.Forbidden, discord.HTTPException, AttributeError, discord.NotFound):
                 logger.debug("pass")
-        channel_to_invite = guild.rules_channel or guild.channels[0]
+        channel_to_invite = guild.text_channels[0]
         invite = await channel_to_invite.create_invite(max_uses=1, reason=f"{user.name} was unbanned.")
         try:
             await user.send(f"You can rejoin **{guild.name}** with this link: {invite}")
-        except (discord.Forbidden, discord.HTTPException, AttributeError):
+        except (discord.Forbidden, discord.HTTPException, AttributeError, discord.NotFound):
             logger.debug("pass")
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         async with aiosqlite.connect("database.sqlite") as db:
+            async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                                  "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                  (guild.id, user.id, "un_thin_ice")) as cur:
+                async for row in cur:
+                    await scheduler.canceltask(row[0])
             async with db.execute("SELECT ban_appeal_link FROM server_config WHERE guild=?", (guild.id,)) as cur:
                 ban_appeal_link = await cur.fetchone()
         if ban_appeal_link is not None and ban_appeal_link[0] is not None:
             try:
-                await user.send(f"You can appeal your ban from **{guild.name}** at {ban_appeal_link}")
+                await user.send(f"You can appeal your ban from **{guild.name}** at {ban_appeal_link[0]}")
             except (discord.Forbidden, discord.HTTPException, AttributeError):
                 logger.debug("pass")
 
@@ -236,6 +271,42 @@ class ModerationCog(commands.Cog, name="Moderation"):
                         actuallycancelledanytasks = True
             if actuallycancelledanytasks:
                 await after.send(f"You were manually unmuted in **{after.guild.name}**.")
+        async with aiosqlite.connect("database.sqlite") as db:
+            async with db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?",
+                                  (after.guild.id,)) as cur:
+                thin_ice_role = await cur.fetchone()
+            if thin_ice_role is not None and thin_ice_role[0] is not None:
+                if thin_ice_role[0] in [role.id for role in before.roles] and thin_ice_role[0] not in [role.id for role in after.roles]:  # if muted role manually removed
+                    actuallycancelledanytasks = False
+                    async with aiosqlite.connect("database.sqlite") as db:
+                        async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                                              "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                              (after.guild.id, after.id, "un_thin_ice")) as cur:
+                            async for row in cur:
+                                await scheduler.canceltask(row[0])
+                                actuallycancelledanytasks = True
+                    if actuallycancelledanytasks:
+                        await after.send(f"Your thin ice was manually removed in **{after.guild.name}**.")
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        async with aiosqlite.connect("database.sqlite") as db:
+            async with db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
+                                  (member.guild.id,)) as cur:
+                thin_ice_role = await cur.fetchone()
+            if thin_ice_role is not None and thin_ice_role[0] is not None:
+                async with db.execute("SELECT * from thin_ice WHERE user=? AND guild=? AND marked_for_thin_ice=1",
+                                      (member.id, member.guild.id)) as cur:
+                    user = await cur.fetchone()
+                if user is not None:
+                    await member.add_roles(discord.Object(thin_ice_role[0]))
+                    scheduletime = datetime.now(tz=timezone.utc) + timedelta(weeks=1)
+                    await scheduler.schedule(scheduletime, "un_thin_ice",
+                                             {"guild": member.guild.id, "member": member.id,
+                                              "thin_ice_role": thin_ice_role[0]})
+                    await member.send(f"Welcome back to **{member.guild.name}**. since you were just unbanned, you will"
+                                      f" have the **thin ice** role for **1 week.** If you receive {thin_ice_role[1]} "
+                                      f"point(s) in this timespan, you will be permanently banned.")
 
     @commands.command(aliases=["setmodrole", "addmodrole", "moderatorrole"])
     @commands.has_guild_permissions(manage_guild=True)
@@ -255,6 +326,40 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await update_server_config(ctx.guild.id, "mod_role", role.id)
             await ctx.reply(f"✔️ Set server moderator role to **{discord.utils.escape_mentions(role.name)}**")
             await modlog.modlog(f"{ctx.author.mention} set the server mod role to {role.mention}", ctx.guild.id)
+
+    @commands.command(aliases=["setthinicerole", "addthinicerole", "setthinice"])
+    @commands.has_guild_permissions(manage_guild=True)
+    @commands.guild_only()
+    async def thinicerole(self, ctx, *, role: typing.Union[discord.Role, None] = None):
+        """
+        Sets the server thin ice role and activates the thin ice system.
+        Anyone who has the mod role can use commands such as mute and warn.
+
+        :Param=role - The thin ice role, leave blank to remove the thin ice system from this server
+        """
+        if role is None:
+            await update_server_config(ctx.guild.id, "thin_ice_role", None)
+            await ctx.reply("✔️ Removed server thin ice role.")
+            await modlog.modlog(f"{ctx.author.mention} removed the server mod role.", ctx.guild.id)
+        else:
+            await update_server_config(ctx.guild.id, "thin_ice_role", role.id)
+            await ctx.reply(f"✔️ Set server thin ice role to **{discord.utils.escape_mentions(role.name)}**")
+            await modlog.modlog(f"{ctx.author.mention} set the server thin ice role to {role.mention}", ctx.guild.id)
+
+    @commands.command()
+    @commands.has_guild_permissions(manage_guild=True)
+    @commands.guild_only()
+    async def thinicethreshold(self, ctx, *, threshold: int = 1):
+        """
+        Sets the amount of points someone has to get on thin ice to be permanently banned.
+
+        :Param=threshold - the amount of points someone has to get on thin ice to be permanently banned.
+        """
+        assert threshold >= 1
+        await update_server_config(ctx.guild.id, "thin_ice_threshold", threshold)
+        await ctx.reply(f"✔️ Set server thin ice threshold to **{threshold} point(s)**")
+        await modlog.modlog(f"{ctx.author.mention} set the server thin ice threshold to **{threshold} point(s)**",
+                            ctx.guild.id)
 
     @commands.command(aliases=["setlogchannel", "modlogchannel", "moderatorlogchannel", "setmodlogchannel", "modlog",
                                "setmodlog"])
