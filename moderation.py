@@ -105,7 +105,7 @@ async def ban_action(member: discord.Member, ban_length: typing.Union[timedelta,
                 logger.debug("pass")
         return True
     except discord.Forbidden:
-        await modlog.modlog(f"Tried to ban {member.mention} but I wasn't able to! is {member.mention} an admin?",
+        await modlog.modlog(f"Tried to ban {member.mention} but I wasn't able to! Is {member.mention} an admin?",
                             member.guild.id)
 
 
@@ -197,6 +197,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        if len(message.mentions) > 10 and message.guild:
+            await asyncio.gather(
+                message.delete(),
+                ban_action(message.author, None, "Automatically banned for mass ping."),
+                modlog.modlog(f"{message.author.mention} was automatically banned for mass ping.", message.guild.id)
+            )
         if message.guild and isinstance(message.author, discord.Member):
             async with aiosqlite.connect("database.sqlite") as db:
                 async with db.execute("SELECT muted_role FROM server_config WHERE guild=?", (message.guild.id,)) as cur:
