@@ -100,7 +100,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 outattachments.append(await att.to_file(spoiler=True))
             embed = discord.Embed().set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
             if content:
-                content = f"|| {content} ||"
+                content = f"||{discord.utils.escape_markdown(content)}||"
             if content or outattachments:
                 await asyncio.gather(
                     ctx.send(content=content, files=outattachments, embed=embed),
@@ -113,8 +113,9 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     outattachments.append(await att.to_file(spoiler=True))
                 embed = discord.Embed().set_author(name=ctx.message.reference.resolved.author.display_name,
                                                    icon_url=ctx.message.reference.resolved.author.avatar_url)
-                content = f"|| {ctx.message.reference.resolved.content} ||" if ctx.message.reference.resolved.content \
-                    else ""
+                embed.set_footer(text=f"Spoilered by {ctx.author.display_name}", icon_url=ctx.author.avatar_url)
+                content = f"||{discord.utils.escape_markdown(ctx.message.reference.resolved.content)}||" \
+                    if ctx.message.reference.resolved.content else ""
                 await asyncio.gather(
                     ctx.send(content=content, files=outattachments, embed=embed),
                     ctx.message.delete(),

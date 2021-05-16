@@ -87,22 +87,26 @@ async def ban_action(member: discord.Member, ban_length: typing.Union[timedelta,
     if member in bans:
         return False
     htime = humanize.precisedelta(ban_length)
-    await member.guild.ban(member, reason=reason)
-    if ban_length is None:
-        try:
-            await member.send(f"You were permanently banned in **{member.guild.name}** with reason "
-                              f"`{discord.utils.escape_mentions(reason)}`.")
-        except (discord.Forbidden, discord.HTTPException, AttributeError):
-            logger.debug("pass")
-    else:
-        scheduletime = datetime.now(tz=timezone.utc) + ban_length
-        await scheduler.schedule(scheduletime, "unban", {"guild": member.guild.id, "member": member.id})
-        try:
-            await member.send(f"You were banned in **{member.guild.name}** for **{htime}** with reason "
-                              f"`{discord.utils.escape_mentions(reason)}`.")
-        except (discord.Forbidden, discord.HTTPException, AttributeError):
-            logger.debug("pass")
-    return True
+    try:
+        await member.guild.ban(member, reason=reason)
+        if ban_length is None:
+            try:
+                await member.send(f"You were permanently banned in **{member.guild.name}** with reason "
+                                  f"`{discord.utils.escape_mentions(reason)}`.")
+            except (discord.Forbidden, discord.HTTPException, AttributeError):
+                logger.debug("pass")
+        else:
+            scheduletime = datetime.now(tz=timezone.utc) + ban_length
+            await scheduler.schedule(scheduletime, "unban", {"guild": member.guild.id, "member": member.id})
+            try:
+                await member.send(f"You were banned in **{member.guild.name}** for **{htime}** with reason "
+                                  f"`{discord.utils.escape_mentions(reason)}`.")
+            except (discord.Forbidden, discord.HTTPException, AttributeError):
+                logger.debug("pass")
+        return True
+    except discord.Forbidden:
+        await modlog.modlog(f"Tried to ban {member.mention} but I wasn't able to! is {member.mention} an admin?",
+                            member.guild.id)
 
 
 async def mute_action(member: discord.Member, mute_length: typing.Union[timedelta, None], reason: str):
