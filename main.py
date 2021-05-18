@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 import scheduler
 from errhandler import ErrorHandler
+from funnybanner import FunnyBanner
 from helpcommand import HelpCommand
 from funcommands import FunCommands
 from admincommands import AdminCommands
@@ -31,6 +32,7 @@ bot.add_cog(UtilityCommands(bot))
 bot.add_cog(ModerationCog(bot))
 bot.add_cog(scheduler.ScheduleInitCog(bot))
 bot.add_cog(ModLogInitCog(bot))
+bot.add_cog(FunnyBanner(bot))
 
 
 def logcommand(cmd):

@@ -9,6 +9,7 @@ coloredlogs = "*"
 humanize = "*"
 aiosqlite = "*"
 aioscheduler = "*"
+python-twitter = "*"
 
 [dev-packages]
 
