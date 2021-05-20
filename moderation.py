@@ -88,7 +88,7 @@ async def ban_action(member: discord.Member, ban_length: typing.Union[timedelta,
         return False
     htime = humanize.precisedelta(ban_length)
     try:
-        await member.guild.ban(member, reason=reason)
+        await member.guild.ban(member, reason=reason, delete_message_days=0)
         if ban_length is None:
             try:
                 await member.send(f"You were permanently banned in **{member.guild.name}** with reason "
@@ -290,7 +290,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                   (after.guild.id,)) as cur:
                 thin_ice_role = await cur.fetchone()
             if thin_ice_role is not None and thin_ice_role[0] is not None:
-                if thin_ice_role[0] in [role.id for role in before.roles] and thin_ice_role[0] not in [role.id for role in after.roles]:  # if muted role manually removed
+                if thin_ice_role[0] in [role.id for role in before.roles] and thin_ice_role[0] not in [role.id for role
+                                                                                                       in
+                                                                                                       after.roles]:  # if muted role manually removed
                     actuallycancelledanytasks = False
                     async with aiosqlite.connect("database.sqlite") as db:
                         async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
@@ -797,6 +799,18 @@ class ModerationCog(commands.Cog, name="Moderation"):
                     embed.add_field(name="No Auto-punishment Rules", value="This server has no auto-punishments. "
                                                                            "Add some with m.addautopunishment.")
         await ctx.reply(embed=embed)
+
+    @commands.command()
+    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
+    async def purge(self, ctx, num_messages: int):
+        assert num_messages >= 1
+        await asyncio.gather(
+            ctx.channel.purge(before=ctx.message, limit=num_messages),
+            ctx.message.delete(),
+            modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) purged {num_messages} message(s) from "
+                          f"{ctx.channel.mention}", ctx.guild.id)
+        )
 
 
 # @commands.is_owner()

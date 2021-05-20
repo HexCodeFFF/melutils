@@ -108,7 +108,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 await ctx.reply(file=discord.File(buf, filename="emojis.json"))
 
     @commands.bot_has_permissions(manage_messages=True)
-    @commands.command(aliases=["cw", "tw", "censor", "s", "sp"])
+    @commands.command(aliases=["cw", "tw", "censor", "s", "sp", "spoil"])
     async def spoiler(self, ctx: commands.Context, *, content=""):
         """
         Spoiler a message and its attachments.
@@ -120,7 +120,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 outattachments.append(await att.to_file(spoiler=True))
             embed = discord.Embed().set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
             if content:
-                content = f"||{discord.utils.escape_markdown(content)}||"
+                content = f"|| {discord.utils.escape_markdown(content)} ||"
             if content or outattachments:
                 await asyncio.gather(
                     ctx.send(content=content, files=outattachments, embed=embed),
@@ -134,7 +134,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 embed = discord.Embed().set_author(name=ctx.message.reference.resolved.author.display_name,
                                                    icon_url=ctx.message.reference.resolved.author.avatar_url)
                 embed.set_footer(text=f"Spoilered by {ctx.author.display_name}", icon_url=ctx.author.avatar_url)
-                content = f"||{discord.utils.escape_markdown(ctx.message.reference.resolved.content)}||" \
+                content = f"|| {discord.utils.escape_markdown(ctx.message.reference.resolved.content)} ||" \
                     if ctx.message.reference.resolved.content else ""
                 await asyncio.gather(
                     ctx.send(content=content, files=outattachments, embed=embed),
