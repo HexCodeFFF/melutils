@@ -20,4 +20,4 @@ async def modlog(msg: str, guildid: int):
         return
     modlogchannel = modlogchannel[0]
     channel = await botcopy.fetch_channel(modlogchannel)
-    await channel.send(msg, allowed_mentions=discord.AllowedMentions.none())
+    await channel.send("**[ModLog]** " + msg, allowed_mentions=discord.AllowedMentions.none())

@@ -105,7 +105,8 @@ async def ban_action(member: discord.Member, ban_length: typing.Union[timedelta,
                 logger.debug("pass")
         return True
     except discord.Forbidden:
-        await modlog.modlog(f"Tried to ban {member.mention} but I wasn't able to! Is {member.mention} an admin?",
+        await modlog.modlog(f"Tried to ban {member.mention} (`{member}`) "
+                            f"but I wasn't able to! Are they an admin?",
                             member.guild.id)
 
 
@@ -150,7 +151,8 @@ async def on_warn(member: discord.Member, issued_points: float):
             if warns_on_thin_ice >= threshold:
                 await ban_action(member, None, f"Automatically banned for receiving more than {threshold}"
                                                f" points on thin ice.")
-                await modlog.modlog(f"{member.mention} was automatically banned for receiving more than {threshold} "
+                await modlog.modlog(f"{member.mention} (`{member}`) was automatically "
+                                    f"banned for receiving more than {threshold} "
                                     f"points on thin ice.", member.guild.id)
                 await db.execute("UPDATE thin_ice SET warns_on_thin_ice = 0 WHERE guild=? AND user=?",
                                  (member.guild.id, member.id))
@@ -159,10 +161,11 @@ async def on_warn(member: discord.Member, issued_points: float):
         else:
             # select all from punishments where the sum of warnings in the punishment range fits the warn_count thing
             # this thing is a mess but should return 1 or 0 punishments if needed
-            monstersql = "SELECT *, (SELECT SUM(points) FROM warnings WHERE (warn_timespan=0 OR (:now-warn_timespan)" \
-                         "<warnings.issuedat) AND warnings.server=:guild AND user=:user AND deactivated=0) pointstotal " \
-                         "FROM auto_punishment WHERE pointstotal >= warn_count AND warn_count > (pointstotal-" \
-                         ":pointsjustgained) AND guild=:guild ORDER BY punishment_duration, punishment_type DESC LIMIT 1"
+            monstersql = "SELECT *, (SELECT SUM(points) FROM warnings WHERE (warn_timespan=0 OR (" \
+                         ":now-warn_timespan)<warnings.issuedat) AND warnings.server=:guild AND user=:user AND " \
+                         "deactivated=0) pointstotal FROM auto_punishment WHERE pointstotal >= warn_count AND " \
+                         "warn_count > (pointstotal-:pointsjustgained) AND guild=:guild ORDER BY punishment_duration," \
+                         "punishment_type DESC LIMIT 1 "
             params = {"now": datetime.now(tz=timezone.utc).timestamp(), "pointsjustgained": issued_points,
                       "guild": member.guild.id, "user": member.id}
             async with db.execute(monstersql, params) as cur:
@@ -186,7 +189,7 @@ async def on_warn(member: discord.Member, issued_points: float):
                 punishment_text = "permanently" if duration.total_seconds() == 0 else \
                     f"for {humanize.precisedelta(duration)}"
                 await modlog.modlog(
-                    f"{member.mention} has been automatically {punishment_type_future_tense[punishment[2]]}"
+                    f"{member.mention} (`{member}`) has been automatically {punishment_type_future_tense[punishment[2]]} "
                     f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
                     member.guild.id)
 
@@ -201,7 +204,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await asyncio.gather(
                 message.delete(),
                 ban_action(message.author, None, "Automatically banned for mass ping."),
-                modlog.modlog(f"{message.author.mention} was automatically banned for mass ping.", message.guild.id)
+                modlog.modlog(f"{message.author.mention} (`{message.author}`) "
+                              f"was automatically banned for mass ping.", message.guild.id)
             )
         if message.guild and isinstance(message.author, discord.Member):
             async with aiosqlite.connect("database.sqlite") as db:
@@ -331,11 +335,13 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if role is None:
             await update_server_config(ctx.guild.id, "mod_role", None)
             await ctx.reply("✔️ Removed server moderator role.")
-            await modlog.modlog(f"{ctx.author.mention} removed the server mod role.", ctx.guild.id)
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed "
+                                f"the server mod role.", ctx.guild.id)
         else:
             await update_server_config(ctx.guild.id, "mod_role", role.id)
             await ctx.reply(f"✔️ Set server moderator role to **{discord.utils.escape_mentions(role.name)}**")
-            await modlog.modlog(f"{ctx.author.mention} set the server mod role to {role.mention}", ctx.guild.id)
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
+                                f"server mod role to {role.mention}", ctx.guild.id)
 
     @commands.command(aliases=["setthinicerole", "addthinicerole", "setthinice"])
     @commands.has_guild_permissions(manage_guild=True)
@@ -350,11 +356,13 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if role is None:
             await update_server_config(ctx.guild.id, "thin_ice_role", None)
             await ctx.reply("✔️ Removed server thin ice role.")
-            await modlog.modlog(f"{ctx.author.mention} removed the server mod role.", ctx.guild.id)
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed "
+                                f"the server mod role.", ctx.guild.id)
         else:
             await update_server_config(ctx.guild.id, "thin_ice_role", role.id)
             await ctx.reply(f"✔️ Set server thin ice role to **{discord.utils.escape_mentions(role.name)}**")
-            await modlog.modlog(f"{ctx.author.mention} set the server thin ice role to {role.mention}", ctx.guild.id)
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
+                                f"server thin ice role to {role.mention}", ctx.guild.id)
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
@@ -368,7 +376,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         assert threshold >= 1
         await update_server_config(ctx.guild.id, "thin_ice_threshold", threshold)
         await ctx.reply(f"✔️ Set server thin ice threshold to **{threshold} point(s)**")
-        await modlog.modlog(f"{ctx.author.mention} set the server thin ice threshold to **{threshold} point(s)**",
+        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
+                            f"server thin ice threshold to **{threshold} point(s)**",
                             ctx.guild.id)
 
     @commands.command(aliases=["setlogchannel", "modlogchannel", "moderatorlogchannel", "setmodlogchannel", "modlog",
@@ -403,11 +412,13 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if ban_appeal_link is None:
             await update_server_config(ctx.guild.id, "ban_appeal_link", None)
             await ctx.reply("✔️ Removed server ban appeal link.")
-            await modlog.modlog(f"{ctx.author.mention} removed the ban appeal link.", ctx.guild.id)
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed "
+                                f"the ban appeal link.", ctx.guild.id)
         else:
             await update_server_config(ctx.guild.id, "ban_appeal_link", ban_appeal_link)
             await ctx.reply(f"✔️ Set server ban appeal link to **{discord.utils.escape_mentions(ban_appeal_link)}** .")
-            await modlog.modlog(f"{ctx.author.mention} set the ban appeal link to {ban_appeal_link}", ctx.guild.id)
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
+                                f"ban appeal link to {ban_appeal_link}", ctx.guild.id)
 
     @commands.command(aliases=["b"])
     @commands.bot_has_permissions(ban_members=True)
@@ -434,12 +445,14 @@ class ModerationCog(commands.Cog, name="Moderation"):
             if ban_length is None:
                 await ctx.reply(
                     f"✔ Permanently banned **{member.mention}** with reason `{discord.utils.escape_mentions(reason)}️`")
-                await modlog.modlog(f"{ctx.author.mention} banned {member.mention} with reason "
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) banned"
+                                    f" {member.mention} (`{member}`) with reason "
                                     f"`{discord.utils.escape_mentions(reason)}️`", ctx.guild.id)
             else:
                 await ctx.reply(f"✔️ Banned **{member.mention}** for **{htime}** with reason "
                                 f"`{discord.utils.escape_mentions(reason)}`.")
-                await modlog.modlog(f"{ctx.author.mention} banned {member.mention} for {htime} with reason "
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) banned"
+                                    f" {member.mention} (`{member}`) for {htime} with reason "
                                     f"`{discord.utils.escape_mentions(reason)}`.", ctx.guild.id)
 
     @commands.command(aliases=["m"])
@@ -467,12 +480,16 @@ class ModerationCog(commands.Cog, name="Moderation"):
             if mute_length is None:
                 await ctx.reply(
                     f"✔ Permanently muted **{member.mention}** with reason `{discord.utils.escape_mentions(reason)}️`")
-                await modlog.modlog(f"{ctx.author.mention} permanently muted **{member.mention}** with reason "
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                                    f"permanently muted {member.mention} (`{member}`) "
+                                    f"with reason "
                                     f"{discord.utils.escape_mentions(reason)}️`", ctx.guild.id)
             else:
                 await ctx.reply(f"✔️ Muted **{member.mention}** for **{htime}** with reason "
                                 f"`{discord.utils.escape_mentions(reason)}`.")
-                await modlog.modlog(f"{ctx.author.mention} muted **{member.mention}** for **{htime}** with reason "
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) muted "
+                                    f"{member.mention} (`{member}`) for **{htime}**"
+                                    f" with reason "
                                     f"`{discord.utils.escape_mentions(reason)}`.", ctx.guild.id)
 
     @commands.command(aliases=["um"])
@@ -498,7 +515,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
                         await member.remove_roles(muted_role)
 
                 await ctx.reply(f"✔️ Unmuted {member.mention}")
-                await modlog.modlog(f"{ctx.author.mention} unmuted {member.mention}", ctx.guild.id)
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
+                                    f" {member.mention} (`{member}`)", ctx.guild.id)
                 try:
                     await member.send(f"You were manually unmuted in **{ctx.guild.name}**.")
                 except (discord.Forbidden, discord.HTTPException, AttributeError):
@@ -525,7 +543,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
                     continue
                 await ctx.guild.unban(member)
                 await ctx.reply(f"✔️ Unbanned {member.mention}")
-                await modlog.modlog(f"{ctx.author.mention} unbanned {member.mention}", ctx.guild.id)
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                                    f"unbanned {member.mention} (`{member}`)",
+                                    ctx.guild.id)
                 try:
                     await member.send(f"You were manually unbanned in **{ctx.guild.name}**.")
                 except (discord.Forbidden, discord.HTTPException, AttributeError):
@@ -551,7 +571,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 await db.commit()
             if cur.rowcount > 0:
                 await ctx.reply(f"✔️ Removed warning #{warn_id}")
-                await modlog.modlog(f"{ctx.author.mention} removed warning #{warn_id}", ctx.guild.id)
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                                    f"removed warning #{warn_id}", ctx.guild.id)
             else:
                 await ctx.reply(f"❌ Failed to remove warning. Does warn #{warn_id} exist and is it from this server?")
 
@@ -569,7 +590,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await db.commit()
         if cur.rowcount > 0:
             await ctx.reply(f"✔️ Restored warning #{warn_id}")
-            await modlog.modlog(f"{ctx.author.mention} restored warning #{warn_id}", ctx.guild.id)
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                                f"restored warning #{warn_id}", ctx.guild.id)
         else:
             await ctx.reply(f"❌ Failed to unremove warning. Does warn #{warn_id} exist and is it from this server?")
 
@@ -584,7 +606,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
         :Param=points (optional, default 1) - the amount of points this warn is worth. think of it as a warn weight.
         :Param=reason (optional) - the reason for warning the member.
         """
-        assert points > 0
+        assert points >= 0
         if points > 1:
             points = round(points, 1)
         now = datetime.now(tz=timezone.utc)
@@ -596,8 +618,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await db.commit()
         await ctx.reply(f"Warned {member.mention} with {points} infraction point{'' if points == 1 else 's'} for: "
                         f"`{discord.utils.escape_mentions(reason)}`")
-        await modlog.modlog(f"{ctx.author.mention} warned {member.mention} with {points} infraction "
-                            f"point{'' if points == 1 else 's'} for: "
+        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                            f"warned {member.mention} (`{member}`) with {points}"
+                            f" infraction point{'' if points == 1 else 's'} for: "
                             f"`{discord.utils.escape_mentions(reason)}`", ctx.guild.id)
         try:
             await member.send(f"You were warned in {ctx.guild.name} for `{discord.utils.escape_mentions(reason)}`.")
@@ -634,7 +657,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
             f"Created warn on {humanize.naturaldate(now)} for {member.mention} with {points} infraction "
             f"point{'' if points == 1 else 's'} for: `{discord.utils.escape_mentions(reason)}`")
         await modlog.modlog(
-            f"{ctx.author.mention} created warn on {humanize.naturaldate(now)} for {member.mention} with {points} "
+            f"{ctx.author.mention} (`{ctx.author}`) created warn on "
+            f"{humanize.naturaldate(now)} for {member.mention} (`{member}`) with"
+            f" {points} "
             f"infraction point{'' if points == 1 else 's'} for: "
             f"`{discord.utils.escape_mentions(reason)}`", ctx.guild.id)
         # try:
@@ -722,7 +747,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         assert point_count > 0
         punishment_type = punishment_type.lower()
         ptext = self.autopunishment_to_text(point_count, point_timespan, punishment_type, punishment_duration)
-        await modlog.modlog(f"{ctx.author.mention} added auto-punishment: {ptext}", ctx.guild.id)
+        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) added "
+                            f"auto-punishment: {ptext}", ctx.guild.id)
         await ctx.reply(ptext)
         async with aiosqlite.connect("database.sqlite") as db:
             await db.execute(
@@ -748,7 +774,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await db.commit()
         if cur.rowcount > 0:
             await ctx.reply(f"✔️ Removed rule for {point_count} point{'' if point_count == 1 else 's'}.")
-            await modlog.modlog(f"{ctx.author.mention} removed auto-punishment rule for {point_count} "
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed "
+                                f"auto-punishment rule for {point_count} "
                                 f"point{'' if point_count == 1 else 's'}.", ctx.guild.id)
         else:
             await ctx.reply(f"❌ Server has no rule for {point_count} point{'' if point_count == 1 else 's'}!")
