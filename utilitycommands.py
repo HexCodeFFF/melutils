@@ -2,17 +2,34 @@ import asyncio
 import io
 import json
 import re
+import zipfile
 from collections import defaultdict
 from datetime import datetime, timezone
-
 import aiohttp
 import discord
+from discord.ext.commands import PartialEmojiConversionFailure
 import humanize
 from discord.ext import commands
 from discord.ext.commands.cooldowns import BucketType
 import scheduler
 from timeconverter import TimeConverter
 from clogs import logger
+
+
+async def fetch(session, url):
+    async with session.get(url) as response:
+        if response.status != 200:
+            response.raise_for_status()
+        return await response.read()
+
+
+async def fetch_all(session, urls):
+    tasks = []
+    for url in urls:
+        task = asyncio.create_task(fetch(session, url))
+        tasks.append(task)
+    results = await asyncio.gather(*tasks)
+    return results
 
 
 class UtilityCommands(commands.Cog, name="Utility"):
@@ -149,6 +166,9 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.has_permissions(manage_messages=True)
     @commands.cooldown(1, 30, BucketType.channel)
     async def fakeconversation(self, ctx: commands.Context, *, content: str):
+        """
+        Generate a fake conversation using webhooks.
+        """
         webhook = None
         webhooks = await ctx.channel.webhooks()
         for w in webhooks:
@@ -167,6 +187,32 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 url = f"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/{chars}.png"
                 await webhook.send(line[1:], username=f"Member {line[0].upper()}", avatar_url=url)
                 await asyncio.sleep(0.5)
+
+    @commands.command()
+    @commands.cooldown(1, 30, BucketType.user)
+    async def zipemojis(self, ctx: commands.Context, *messages: discord.Message):
+        async with ctx.typing():
+            regex = r"<(a?):([a-zA-Z0-9\_]+):([0-9]+)>"
+            emojis = []
+            for m in messages:
+                for em in re.finditer(regex, m.content):
+                    try:
+                        pec = commands.PartialEmojiConverter()
+                        em = await pec.convert(ctx=ctx, argument=em.group(0))
+                        emojis.append(em)
+                    except PartialEmojiConversionFailure:
+                        pass
+            if len(emojis) == 0:
+                await ctx.reply("No emojis found.")
+                return
+            emoji_bytes = await asyncio.gather(*[emoji.url.read() for emoji in emojis])
+            with io.BytesIO() as archive:
+                with zipfile.ZipFile(archive, 'w') as zip_archive:
+                    for i, emoji in enumerate(emoji_bytes):
+                        zip_archive.writestr(f"{i}_{emojis[i].name}.{'gif' if emojis[i].animated else 'png'}",
+                                             bytes(emoji))
+                archive.seek(0)
+                await ctx.reply(file=discord.File(fp=archive, filename="emojis.zip"))
 
 
 '''
