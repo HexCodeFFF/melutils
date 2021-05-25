@@ -10,6 +10,7 @@ from funnybanner import FunnyBanner
 from helpcommand import HelpCommand
 from funcommands import FunCommands
 from admincommands import AdminCommands
+from macro import MacroCog
 from modlog import ModLogInitCog
 from utilitycommands import UtilityCommands
 from moderation import ModerationCog
@@ -33,6 +34,7 @@ bot.add_cog(ModerationCog(bot))
 bot.add_cog(scheduler.ScheduleInitCog(bot))
 bot.add_cog(ModLogInitCog(bot))
 bot.add_cog(FunnyBanner(bot))
+bot.add_cog(MacroCog(bot))
 
 
 def logcommand(cmd):

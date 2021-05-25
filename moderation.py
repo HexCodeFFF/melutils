@@ -457,7 +457,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                     f" {member.mention} (`{member}`) for {htime} with reason "
                                     f"`{discord.utils.escape_mentions(reason)}`.", ctx.guild.id)
 
-    @commands.command(aliases=["m"])
+    @commands.command(aliases=["mu"])
     @commands.bot_has_permissions(manage_roles=True)
     @mod_only()
     async def mute(self, ctx, members: Greedy[discord.Member],

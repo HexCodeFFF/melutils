@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import re
+import typing
 import zipfile
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -188,6 +189,17 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 await webhook.send(line[1:], username=f"Member {line[0].upper()}", avatar_url=url)
                 await asyncio.sleep(0.5)
 
+    async def partial_emoji_list_to_uploaded_zip(self, ctx: commands.Context, emojis: typing.List[
+        typing.Union[discord.Emoji, discord.PartialEmoji]]):
+        emoji_bytes = await asyncio.gather(*[emoji.url.read() for emoji in emojis])
+        with io.BytesIO() as archive:
+            with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as zip_archive:
+                for i, emoji in enumerate(emoji_bytes):
+                    zip_archive.writestr(f"{i}_{emojis[i].name}.{'gif' if emojis[i].animated else 'png'}",
+                                         bytes(emoji))
+            archive.seek(0)
+            await ctx.reply(file=discord.File(fp=archive, filename="emojis.zip"))
+
     @commands.command()
     @commands.cooldown(1, 30, BucketType.user)
     async def zipemojis(self, ctx: commands.Context, *messages: discord.Message):
@@ -205,14 +217,13 @@ class UtilityCommands(commands.Cog, name="Utility"):
             if len(emojis) == 0:
                 await ctx.reply("No emojis found.")
                 return
-            emoji_bytes = await asyncio.gather(*[emoji.url.read() for emoji in emojis])
-            with io.BytesIO() as archive:
-                with zipfile.ZipFile(archive, 'w') as zip_archive:
-                    for i, emoji in enumerate(emoji_bytes):
-                        zip_archive.writestr(f"{i}_{emojis[i].name}.{'gif' if emojis[i].animated else 'png'}",
-                                             bytes(emoji))
-                archive.seek(0)
-                await ctx.reply(file=discord.File(fp=archive, filename="emojis.zip"))
+            await self.partial_emoji_list_to_uploaded_zip(ctx, emojis)
+
+    @commands.command()
+    @commands.cooldown(1, 30, BucketType.guild)
+    async def archiveserveremojis(self, ctx: commands.Context):
+        async with ctx.typing():
+            await self.partial_emoji_list_to_uploaded_zip(ctx, ctx.guild.emojis)
 
 
 '''
