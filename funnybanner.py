@@ -5,8 +5,8 @@ import random
 
 import aiohttp
 import discord
-from discord.ext import commands
 import twitter
+from discord.ext import commands
 
 import config
 from clogs import logger

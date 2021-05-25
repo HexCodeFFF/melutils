@@ -1,12 +1,12 @@
+import inspect
 import multiprocessing
 import os
 import random
 import string
 from multiprocessing import current_process
-import config
-import inspect
-from clogs import logger
 
+import config
+from clogs import logger
 
 if current_process().name == 'MainProcess':
     mgr = multiprocessing.Manager()

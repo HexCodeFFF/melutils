@@ -3,23 +3,10 @@ import pkg_resources
 
 from humanize.filesize import naturalsize
 from humanize.i18n import activate, deactivate, thousands_separator
-from humanize.number import (
-    apnumber,
-    clamp,
-    fractional,
-    intcomma,
-    intword,
-    ordinal,
-    scientific,
-)
-from humanize.time import (
-    naturaldate,
-    naturalday,
-    naturaldelta,
-    naturaltime,
-    precisedelta,
-    precisetime
-)
+from humanize.number import (apnumber, clamp, fractional, intcomma, intword,
+                             ordinal, scientific)
+from humanize.time import (naturaldate, naturalday, naturaldelta, naturaltime,
+                           precisedelta, precisetime)
 
 __version__ = VERSION = pkg_resources.get_distribution(__name__).version
 

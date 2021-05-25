@@ -6,15 +6,17 @@ import typing
 import zipfile
 from collections import defaultdict
 from datetime import datetime, timezone
+
 import aiohttp
 import discord
-from discord.ext.commands import PartialEmojiConversionFailure
-import humanize
 from discord.ext import commands
+from discord.ext.commands import PartialEmojiConversionFailure
 from discord.ext.commands.cooldowns import BucketType
+
+import humanize
 import scheduler
-from timeconverter import TimeConverter
 from clogs import logger
+from timeconverter import TimeConverter
 
 
 async def fetch(session, url):

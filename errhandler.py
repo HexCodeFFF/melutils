@@ -1,12 +1,14 @@
 import datetime
+import difflib
 import io
 import traceback
-import config
-from tempfiles import temp_file, TempFileSession
+
 import discord
 from discord.ext import commands
+
+import config
 from clogs import logger
-import difflib
+from tempfiles import TempFileSession, temp_file
 
 
 class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):

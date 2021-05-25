@@ -1,19 +1,21 @@
 import glob
 import os
-import config
-from clogs import logger
+
 import discord
 from discord.ext import commands
+
+import config
 import scheduler
+from admincommands import AdminCommands
+from clogs import logger
 from errhandler import ErrorHandler
+from funcommands import FunCommands
 from funnybanner import FunnyBanner
 from helpcommand import HelpCommand
-from funcommands import FunCommands
-from admincommands import AdminCommands
 from macro import MacroCog
+from moderation import ModerationCog
 from modlog import ModLogInitCog
 from utilitycommands import UtilityCommands
-from moderation import ModerationCog
 
 if not os.path.exists(config.temp_dir.rstrip("/")):
     os.mkdir(config.temp_dir.rstrip("/"))
