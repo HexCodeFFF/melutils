@@ -143,11 +143,13 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 content = f"|| {discord.utils.escape_markdown(content)} ||"
             if content or outattachments:
                 await asyncio.gather(
-                    ctx.send(content=content, files=outattachments, embed=embed),
+                    ctx.send(content=content, files=outattachments, embed=embed,
+                             allowed_mentions=discord.AllowedMentions.none()),
                     ctx.message.delete()
                 )
                 return
-            elif ctx.message.reference and ctx.author.permissions_in(ctx.channel).manage_messages:
+            elif ctx.message.reference and (ctx.author.permissions_in(
+                    ctx.channel).manage_messages or ctx.message.reference.resolved.author == ctx.author):
                 outattachments = []
                 for att in ctx.message.reference.resolved.attachments:
                     outattachments.append(await att.to_file(spoiler=True))
@@ -157,7 +159,8 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 content = f"|| {discord.utils.escape_markdown(ctx.message.reference.resolved.content)} ||" \
                     if ctx.message.reference.resolved.content else ""
                 await asyncio.gather(
-                    ctx.send(content=content, files=outattachments, embed=embed),
+                    ctx.send(content=content, files=outattachments, embed=embed,
+                             allowed_mentions=discord.AllowedMentions.none()),
                     ctx.message.delete(),
                     ctx.message.reference.resolved.delete()
                 )

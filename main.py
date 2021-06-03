@@ -24,7 +24,7 @@ for f in glob.glob(f'{config.temp_dir}*'):
 
 intents = discord.Intents.default()
 intents.members = True
-activity = discord.Activity(name=f"with my balls | {config.command_prefix}help", type=discord.ActivityType.playing)
+activity = discord.Activity(name=f"to big gay | {config.command_prefix}help", type=discord.ActivityType.listening)
 bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity,
                    intents=intents)
 bot.add_cog(ErrorHandler(bot))
@@ -69,10 +69,7 @@ async def on_command_completion(ctx):
 @bot.event
 async def on_ready():
     scheduler.botcopy = bot
-    # await scheduler.start()
     logger.log(35, f"Logged in as {bot.user.name}!")
-    # game = discord.Activity(name=f"with my balls | {config.command_prefix}help", type=discord.ActivityType.playing)
-    # await bot.change_presence(activity=game)
 
 
 bot.run(config.bot_token)

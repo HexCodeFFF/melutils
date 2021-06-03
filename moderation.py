@@ -194,6 +194,9 @@ async def on_warn(member: discord.Member, issued_points: float):
 
 
 class ModerationCog(commands.Cog, name="Moderation"):
+    """
+    commands for server moderation
+    """
     def __init__(self, bot):
         self.bot = bot
 
