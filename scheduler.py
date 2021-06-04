@@ -64,21 +64,21 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
             await asyncio.gather(guild.unban(member, reason="End of temp-ban."),
                                  member.send(f"You were unbanned in **{guild.name}**."),
                                  modlog.modlog(f"{member.mention} (`{member}`) "
-                                               f"was automatically unbanned.", guild.id))
+                                               f"was automatically unbanned.", guild.id, member.id))
         elif eventtype == "unmute":
             guild = await botcopy.fetch_guild(eventdata["guild"])
             member = await guild.fetch_member(eventdata["member"])
             await asyncio.gather(member.remove_roles(discord.Object(eventdata["mute_role"])),
                                  member.send(f"You were unmuted in **{guild.name}**."),
                                  modlog.modlog(f"{member.mention} (`{member}`) "
-                                               f"was automatically unmuted.", guild.id))
+                                               f"was automatically unmuted.", guild.id, member.id))
         elif eventtype == "un_thin_ice":
             guild = await botcopy.fetch_guild(eventdata["guild"])
             member = await guild.fetch_member(eventdata["member"])
             await asyncio.gather(member.remove_roles(discord.Object(eventdata["thin_ice_role"])),
                                  member.send(f"Your thin ice has expired in **{guild.name}**."),
                                  modlog.modlog(f"{member.mention}'s (`{member}`) "
-                                               f"thin ice has expired.", guild.id))
+                                               f"thin ice has expired.", guild.id, member.id))
             async with aiosqlite.connect("database.sqlite") as db:
                 await db.execute("DELETE FROM thin_ice WHERE guild=? and user=?", (guild.id, member.id))
                 await db.commit()

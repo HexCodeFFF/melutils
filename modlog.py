@@ -1,6 +1,9 @@
+import typing
+
 import aiosqlite
 import discord
 from discord.ext import commands
+from datetime import datetime, timezone
 
 botcopy = commands.Bot
 
@@ -12,8 +15,11 @@ class ModLogInitCog(commands.Cog):
         self.bot = bot
 
 
-async def modlog(msg: str, guildid: int):
+async def modlog(msg: str, guildid: int, userid: typing.Union[int, None] = None, modid: typing.Union[int, None] = None):
     async with aiosqlite.connect("database.sqlite") as db:
+        await db.execute("INSERT INTO modlog(guild,user,moderator,text,datetime) VALUES (?,?,?,?,?)",
+                         (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
+        await db.commit()
         async with db.execute("SELECT log_channel FROM server_config WHERE guild=?", (guildid,)) as cur:
             modlogchannel = await cur.fetchone()
     if modlogchannel is None or modlogchannel[0] is None:

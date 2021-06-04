@@ -26,7 +26,7 @@ class MacroCog(commands.Cog):
                 (ctx.guild.id, name, content))
             await db.commit()
         await ctx.reply(f"✔️ Added macro `{name}`.")
-        await modlog(f"{ctx.author.mention} (`{ctx.author}`) added macro `{name}`.", ctx.guild.id)
+        await modlog(f"{ctx.author.mention} (`{ctx.author}`) added macro `{name}`.", ctx.guild.id, modid=ctx.author.id)
 
     @mod_only()
     @commands.command()
@@ -38,7 +38,8 @@ class MacroCog(commands.Cog):
             await db.commit()
         if cur.rowcount > 0:
             await ctx.reply(f"✔️ Deleted macro {name}.")
-            await modlog(f"{ctx.author.mention} (`{ctx.author}`) deleted macro `{name}`.", ctx.guild.id)
+            await modlog(f"{ctx.author.mention} (`{ctx.author}`) deleted macro `{name}`.", ctx.guild.id,
+                         modid=ctx.author.id)
         else:
             await ctx.reply("⚠️ No macro found with that name!")
 
