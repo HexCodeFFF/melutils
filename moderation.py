@@ -81,7 +81,7 @@ async def get_muted_role(guild: discord.Guild) -> discord.Role:
     return muted_role
 
 
-async def ban_action(member: discord.User, ban_length: typing.Union[timedelta, None], reason: str):
+async def ban_action(member: discord.User, ban_length: typing.Optional[timedelta], reason: str):
     bans = [ban.user for ban in await member.guild.bans()]
     if member in bans:
         return False
@@ -109,7 +109,7 @@ async def ban_action(member: discord.User, ban_length: typing.Union[timedelta, N
                             member.guild.id, member.id)
 
 
-async def mute_action(member: discord.Member, mute_length: typing.Union[timedelta, None], reason: str):
+async def mute_action(member: discord.Member, mute_length: typing.Optional[timedelta], reason: str):
     muted_role = await get_muted_role(member.guild)
     if muted_role in member.roles:
         return False
@@ -330,7 +330,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.command(aliases=["setmodrole", "addmodrole", "moderatorrole"])
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def modrole(self, ctx, *, role: typing.Union[discord.Role, None] = None):
+    async def modrole(self, ctx, *, role: typing.Optional[discord.Role] = None):
         """
         Sets the server moderator role.
         Anyone who has the mod role can use commands such as mute and warn.
@@ -351,7 +351,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.command(aliases=["setthinicerole", "addthinicerole", "setthinice"])
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def thinicerole(self, ctx, *, role: typing.Union[discord.Role, None] = None):
+    async def thinicerole(self, ctx, *, role: typing.Optional[discord.Role] = None):
         """
         Sets the server thin ice role and activates the thin ice system.
         Anyone who has the mod role can use commands such as mute and warn.
@@ -389,7 +389,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                "setmodlog"])
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def logchannel(self, ctx, *, ch: typing.Union[discord.TextChannel, None] = None):
+    async def logchannel(self, ctx, *, ch: typing.Optional[discord.TextChannel] = None):
         """
         Sets the server modlog channel.
         All moderator actions will be logged in this channel.
@@ -429,7 +429,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.bot_has_permissions(ban_members=True)
     @mod_only()
     async def ban(self, ctx, members: Greedy[discord.User],
-                  ban_length: typing.Optional[typing.Union[TimeConverter, None]] = None, *,
+                  ban_length: typing.Optional[TimeConverter] = None, *,
                   reason: str = "No reason provided."):
         """
         Ban/temp-ban a member or several.
@@ -466,7 +466,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.bot_has_permissions(manage_roles=True)
     @mod_only()
     async def mute(self, ctx, members: Greedy[discord.Member],
-                   mute_length: typing.Optional[typing.Union[TimeConverter, None]] = None, *,
+                   mute_length: typing.Optional[TimeConverter] = None, *,
                    reason: str = "No reason provided."):
         """
         Mute or tempmute a member or several.
@@ -748,23 +748,24 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 now = datetime.now(tz=timezone.utc)
                 async for log in cursor:
                     if log[2]:
-                        user = await self.bot.fetch_user(log[2])
+                        user: typing.Optional[discord.User] = await self.bot.fetch_user(log[2])
                     else:
-                        user = False
+                        user = None
                     if log[3]:
-                        moderator = await self.bot.fetch_user(log[3])
+                        moderator: typing.Optional[discord.User] = await self.bot.fetch_user(log[3])
                     else:
-                        moderator = False
+                        moderator = None
                     issuedat = datetime.fromtimestamp(log[1], tz=timezone.utc)
                     text = log[0]
-                    embed.add_field(name=f"{humanize.naturaltime(issuedat, when=now)} ({humanize.naturaldate(issuedat)})",
-                                    value=
-                                    text + ("\n\n" if user or moderator else "") +
-                                    (f"**User**: {user.mention}\n" if user else "") +
-                                    (f"**Moderator**: {moderator.mention}\n" if moderator else ""))
-                    if not embed.fields:
-                        embed.add_field(name="No Results", value="Try a different page #.")
-                    await ctx.reply(embed=embed)
+                    embed.add_field(
+                        name=f"{humanize.naturaltime(issuedat, when=now)} ({humanize.naturaldate(issuedat)})",
+                        value=
+                        text + ("\n\n" if user or moderator else "") +
+                        (f"**User**: {user.mention}\n" if user else "") +
+                        (f"**Moderator**: {moderator.mention}\n" if moderator else ""))
+                if not embed.fields:
+                    embed.add_field(name="No Results", value="Try a different page #.")
+                await ctx.reply(embed=embed)
 
     def autopunishment_to_text(self, point_count, point_timespan, punishment_type, punishment_duration):
         punishment_type_future_tense = {
