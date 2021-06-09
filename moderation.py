@@ -81,7 +81,7 @@ async def get_muted_role(guild: discord.Guild) -> discord.Role:
     return muted_role
 
 
-async def ban_action(member: discord.Member, ban_length: typing.Union[timedelta, None], reason: str):
+async def ban_action(member: discord.User, ban_length: typing.Union[timedelta, None], reason: str):
     bans = [ban.user for ban in await member.guild.bans()]
     if member in bans:
         return False
@@ -428,7 +428,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.command(aliases=["b"])
     @commands.bot_has_permissions(ban_members=True)
     @mod_only()
-    async def ban(self, ctx, members: Greedy[discord.Member],
+    async def ban(self, ctx, members: Greedy[discord.User],
                   ban_length: typing.Optional[typing.Union[TimeConverter, None]] = None, *,
                   reason: str = "No reason provided."):
         """
@@ -729,7 +729,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
     @commands.command(aliases=["moderatorlogs", "modlog", "logs"])
     @mod_only()
-    async def modlogs(self, ctx, member: discord.Member, page: int = 1, viewmodactions: bool = False):
+    async def modlogs(self, ctx, member: discord.User, page: int = 1, viewmodactions: bool = False):
         """
         List a member's warns.
 
