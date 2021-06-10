@@ -81,32 +81,33 @@ async def get_muted_role(guild: discord.Guild) -> discord.Role:
     return muted_role
 
 
-async def ban_action(member: discord.User, ban_length: typing.Optional[timedelta], reason: str):
-    bans = [ban.user for ban in await member.guild.bans()]
-    if member in bans:
+async def ban_action(user: typing.Union[discord.User, discord.Member], guild: discord.Guild,
+                     ban_length: typing.Optional[timedelta], reason: str):
+    bans = [ban.user for ban in await guild.bans()]
+    if user in bans:
         return False
     htime = humanize.precisedelta(ban_length)
     try:
-        await member.guild.ban(member, reason=reason, delete_message_days=0)
+        await guild.ban(user, reason=reason, delete_message_days=0)
         if ban_length is None:
             try:
-                await member.send(f"You were permanently banned in **{member.guild.name}** with reason "
-                                  f"`{discord.utils.escape_mentions(reason)}`.")
+                await user.send(f"You were permanently banned in **{guild.name}** with reason "
+                                f"`{discord.utils.escape_mentions(reason)}`.")
             except (discord.Forbidden, discord.HTTPException, AttributeError):
                 logger.debug("pass")
         else:
             scheduletime = datetime.now(tz=timezone.utc) + ban_length
-            await scheduler.schedule(scheduletime, "unban", {"guild": member.guild.id, "member": member.id})
+            await scheduler.schedule(scheduletime, "unban", {"guild": guild.id, "member": user.id})
             try:
-                await member.send(f"You were banned in **{member.guild.name}** for **{htime}** with reason "
-                                  f"`{discord.utils.escape_mentions(reason)}`.")
+                await user.send(f"You were banned in **{guild.name}** for **{htime}** with reason "
+                                f"`{discord.utils.escape_mentions(reason)}`.")
             except (discord.Forbidden, discord.HTTPException, AttributeError):
                 logger.debug("pass")
         return True
     except discord.Forbidden:
-        await modlog.modlog(f"Tried to ban {member.mention} (`{member}`) "
+        await modlog.modlog(f"Tried to ban {user.mention} (`{user}`) "
                             f"but I wasn't able to! Are they an admin?",
-                            member.guild.id, member.id)
+                            guild.id, user.id)
 
 
 async def mute_action(member: discord.Member, mute_length: typing.Optional[timedelta], reason: str):
@@ -148,8 +149,8 @@ async def on_warn(member: discord.Member, issued_points: float):
                                   (member.guild.id, member.id)) as cur:
                 warns_on_thin_ice = (await cur.fetchone())[0]
             if warns_on_thin_ice >= threshold:
-                await ban_action(member, None, f"Automatically banned for receiving more than {threshold}"
-                                               f" points on thin ice.")
+                await ban_action(member, member.guild, None, f"Automatically banned for receiving more than {threshold}"
+                                                             f" points on thin ice.")
                 await modlog.modlog(f"{member.mention} (`{member}`) was automatically "
                                     f"banned for receiving more than {threshold} "
                                     f"points on thin ice.", member.guild.id, member.id)
@@ -171,16 +172,20 @@ async def on_warn(member: discord.Member, issued_points: float):
                 punishment = await cur.fetchone()
             if punishment is not None:
                 logger.debug(punishment)
-                punishment_types = {
-                    "ban": ban_action,
-                    "mute": mute_action
-                }
-                func = punishment_types[punishment[2]]
+                # punishment_types = {
+                #     "ban": ban_action,
+                #     "mute": mute_action
+                # }
+                # func = punishment_types[punishment[2]]
                 duration = None if punishment[3] == 0 else timedelta(seconds=punishment[3])
                 timespan_text = "total" if punishment[4] == 0 else \
                     f"within {humanize.precisedelta(punishment[4])}"
-                await func(member, duration,
-                           f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
+                if punishment[2] == "ban":
+                    await ban_action(member, member.guild, duration,
+                                     f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
+                elif punishment[2] == "mute":
+                    await mute_action(member, duration,
+                                      f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
                 punishment_type_future_tense = {
                     "ban": "banned",
                     "mute": "muted"
@@ -206,7 +211,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if len(message.mentions) > 10 and message.guild:
             await asyncio.gather(
                 message.delete(),
-                ban_action(message.author, None, "Automatically banned for mass ping."),
+                ban_action(message.author, message.guild, None, "Automatically banned for mass ping."),
                 modlog.modlog(f"{message.author.mention} (`{message.author}`) "
                               f"was automatically banned for mass ping.", message.guild.id, message.author.id)
             )
@@ -443,7 +448,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
             return
         htime = humanize.precisedelta(ban_length)
         for member in members:
-            result = await ban_action(member, ban_length, reason)
+            result = await ban_action(member, ctx.guild, ban_length, reason)
             if not result:
                 await ctx.reply(f"❌ {member.mention} is already banned!")
                 continue
