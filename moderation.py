@@ -58,7 +58,8 @@ async def set_up_muted_role(guild: discord.Guild):
     muted_role = await guild.create_role(name="[MelUtils] muted", reason='Setting up mute system.')
     logger.debug("overriding permissions on all channels")
     await asyncio.gather(
-        *[channel.set_permissions(muted_role, send_messages=False, speak=False, reason='Setting up mute system.')
+        *[channel.set_permissions(muted_role, send_messages=False, speak=False, add_reactions=False,
+                                  reason='Setting up mute system.')
           for channel in guild.channels + guild.categories])
     logger.debug("setting config")
     await update_server_config(guild.id, "muted_role", muted_role.id)
@@ -713,7 +714,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                     f"Reason: {reason}\n"
                                     f"Issued by: {issuedby.mention}\n"
                                     f"Issued {humanize.naturaltime(issuedat, when=now)} "
-                                    f"({humanize.naturaldate(issuedat)})")
+                                    f"({humanize.naturaldate(issuedat)})", inline=False)
             async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
                                   (member.id, ctx.guild.id)) as cur:
                 warncount = (await cur.fetchone())[0]
@@ -729,7 +730,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                  f"{warncount} warn{'' if warncount == 1 else 's'} and " \
                                  f"{delwarncount} deleted warn{'' if delwarncount == 1 else 's'}"
             if not embed.fields:
-                embed.add_field(name="No Results", value="Try a different page # or show deleted warns.")
+                embed.add_field(name="No Results", value="Try a different page # or show deleted warns.", inline=False)
         await ctx.reply(embed=embed)
 
     @commands.command(aliases=["moderatorlogs", "modlog", "logs"])
@@ -767,9 +768,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
                         value=
                         text + ("\n\n" if user or moderator else "") +
                         (f"**User**: {user.mention}\n" if user else "") +
-                        (f"**Moderator**: {moderator.mention}\n" if moderator else ""))
+                        (f"**Moderator**: {moderator.mention}\n" if moderator else ""), inline=False)
                 if not embed.fields:
-                    embed.add_field(name="No Results", value="Try a different page #.")
+                    embed.add_field(name="No Results", value="Try a different page #.", inline=False)
                 await ctx.reply(embed=embed)
 
     def autopunishment_to_text(self, point_count, point_timespan, punishment_type, punishment_duration):
@@ -846,10 +847,11 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                   (ctx.guild.id,)) as cursor:
                 async for p in cursor:
                     value = self.autopunishment_to_text(p[1], timedelta(seconds=p[4]), p[2], timedelta(seconds=p[3]))
-                    embed.add_field(name=f"Rule for {p[1]} point{'' if p[1] == 1 else 's'}", value=value)
+                    embed.add_field(name=f"Rule for {p[1]} point{'' if p[1] == 1 else 's'}", value=value, inline=False)
                 if not embed.fields:
                     embed.add_field(name="No Auto-punishment Rules", value="This server has no auto-punishments. "
-                                                                           "Add some with m.addautopunishment.")
+                                                                           "Add some with m.addautopunishment.",
+                                    inline=False)
         await ctx.reply(embed=embed)
 
     @commands.command()
