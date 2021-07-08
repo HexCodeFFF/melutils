@@ -37,7 +37,7 @@ def mod_only():
 
 
 async def update_server_config(server: int, config: str, value):
-    """DO NOT ALLOW CONFIG TO BE logger.debug("pass")ED AS A VARIABLE, PRE-DEFINED STRINGS ONLY."""
+    """DO NOT ALLOW CONFIG TO BE PASSED AS A VARIABLE, PRE-DEFINED STRINGS ONLY."""
     async with aiosqlite.connect("database.sqlite") as db:
         async with db.execute("SELECT COUNT(guild) FROM server_config WHERE guild=?", (server,)) as cur:
             guilds = await cur.fetchone()
@@ -579,17 +579,33 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
         :Param=warn_ids - one or more warn IDs to delete. get the ID of a warn with m.warns.
         """
+        if not warn_ids:
+            await ctx.reply(f"❌ Specify a warn ID.")
         for warn_id in warn_ids:
             async with aiosqlite.connect("database.sqlite") as db:
-                cur = await db.execute("UPDATE warnings SET deactivated=1 WHERE id=? AND server=? AND deactivated=0",
-                                       (warn_id, ctx.guild.id))
-                await db.commit()
-            if cur.rowcount > 0:
-                await ctx.reply(f"✔️ Removed warning #{warn_id}")
-                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
-                                    f"removed warning #{warn_id}", ctx.guild.id, modid=ctx.author.id)
-            else:
-                await ctx.reply(f"❌ Failed to remove warning. Does warn #{warn_id} exist and is it from this server?")
+                async with db.execute("SELECT user, points FROM warnings WHERE id=? AND server=? AND deactivated=0",
+                                      (warn_id, ctx.guild.id)) as cur:
+                    warn = await cur.fetchone()
+                if warn is None:
+                    ctx.reply(
+                        f"❌ Failed to remove warning. Does warn #{warn_id} exist and is it from this server?")
+                else:
+                    cur = await db.execute("UPDATE warnings SET deactivated=0 WHERE id=?", (warn_id,))
+                    # update warns on thin ice
+                    member = await ctx.guild.fetch_member(warn[0])
+                    points = warn[1]
+                    async with db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
+                                          (member.guild.id,)) as cur:
+                        thin_ice_role = await cur.fetchone()
+                    if thin_ice_role is not None and thin_ice_role[0] is not None \
+                            and thin_ice_role[0] in [role.id for role in member.roles]:
+                        await db.execute(
+                            "UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice-? WHERE guild=? AND user=?",
+                            (points, member.guild.id, member.id))
+                    await db.commit()
+                    await ctx.reply(f"✔️ Removed warning #{warn_id}")
+                    await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                                        f"removed warning #{warn_id}", ctx.guild.id, modid=ctx.author.id)
 
     @commands.command(aliases=["restorewarn", "undeletewarn", "udw"])
     @mod_only()
@@ -641,7 +657,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
             try:
                 await member.send(f"You were warned in {ctx.guild.name} for `{discord.utils.escape_mentions(reason)}`.")
             except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
-                logger.debug("pass;" + e)
+                logger.debug("pass;" + str(e))
             await on_warn(member, points)  # this handles autopunishments
 
     @commands.command(aliases=["ow", "transferwarn"])
@@ -869,12 +885,6 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
 
 # @commands.is_owner()
-# @commands.command()
-# async def delwarn(self, ctx, *warnid: int):
-#     async with aiosqlite.connect("database.sqlite") as db:
-#         await db.executemany("DELETE FROM warnings WHERE id=?", [(i,) for i in warnid])
-#         await db.commit()
-#         await ctx.reply("✔️")
 
 
 # command here
