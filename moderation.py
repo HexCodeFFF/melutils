@@ -612,7 +612,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
     @commands.command(aliases=["w"])
     @mod_only()
-    async def warn(self, ctx, member: discord.Member, points: typing.Optional[float] = 1, *,
+    async def warn(self, ctx, members: Greedy[discord.Member], points: typing.Optional[float] = 1, *,
                    reason="No reason provided."):
         """
         Warn a member.
@@ -625,23 +625,24 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if points > 1:
             points = round(points, 1)
         now = datetime.now(tz=timezone.utc)
-        async with aiosqlite.connect("database.sqlite") as db:
-            await db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
-                             "VALUES (?, ?, ?, ?, ?, ?)",
-                             (ctx.guild.id, member.id, ctx.author.id,
-                              int(now.timestamp()), reason, points))
-            await db.commit()
-        await ctx.reply(f"Warned {member.mention} with {points} infraction point{'' if points == 1 else 's'} for: "
-                        f"`{discord.utils.escape_mentions(reason)}`")
-        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
-                            f"warned {member.mention} (`{member}`) with {points}"
-                            f" infraction point{'' if points == 1 else 's'} for: "
-                            f"`{discord.utils.escape_mentions(reason)}`", ctx.guild.id, member.id, ctx.author.id)
-        try:
-            await member.send(f"You were warned in {ctx.guild.name} for `{discord.utils.escape_mentions(reason)}`.")
-        except (discord.Forbidden, discord.HTTPException, AttributeError):
-            logger.debug("pass")
-        await on_warn(member, points)  # this handles autopunishments
+        for member in members:
+            async with aiosqlite.connect("database.sqlite") as db:
+                await db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
+                                 "VALUES (?, ?, ?, ?, ?, ?)",
+                                 (ctx.guild.id, member.id, ctx.author.id,
+                                  int(now.timestamp()), reason, points))
+                await db.commit()
+            await ctx.reply(f"Warned {member.mention} with {points} infraction point{'' if points == 1 else 's'} for: "
+                            f"`{discord.utils.escape_mentions(reason)}`")
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                                f"warned {member.mention} (`{member}`) with {points}"
+                                f" infraction point{'' if points == 1 else 's'} for: "
+                                f"`{discord.utils.escape_mentions(reason)}`", ctx.guild.id, member.id, ctx.author.id)
+            try:
+                await member.send(f"You were warned in {ctx.guild.name} for `{discord.utils.escape_mentions(reason)}`.")
+            except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
+                logger.debug("pass;" + e)
+            await on_warn(member, points)  # this handles autopunishments
 
     @commands.command(aliases=["ow", "transferwarn"])
     @mod_only()
