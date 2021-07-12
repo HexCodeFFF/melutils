@@ -194,7 +194,7 @@ async def on_warn(member: discord.Member, issued_points: float):
                 punishment_text = "permanently" if duration.total_seconds() == 0 else \
                     f"for {humanize.precisedelta(duration)}"
                 await modlog.modlog(
-                    f"{member.mention} (`{member}`) has been automatically {punishment_type_future_tense[punishment[2]]} "
+                    f"{member.mention} (`{member}`) has been automatically {punishment_type_future_tense[punishment[2]]}"
                     f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
                     member.guild.id, member.id)
 
@@ -686,11 +686,11 @@ class ModerationCog(commands.Cog, name="Moderation"):
                               int(now.timestamp()), reason, points))
             await db.commit()
         await ctx.reply(
-            f"Created warn on {humanize.naturaldate(now)} for {member.mention} with {points} infraction "
+            f"Created warn on <t:{int(now.timestamp())}:D> for {member.mention} with {points} infraction "
             f"point{'' if points == 1 else 's'} for: `{discord.utils.escape_mentions(reason)}`")
         await modlog.modlog(
             f"{ctx.author.mention} (`{ctx.author}`) created warn on "
-            f"{humanize.naturaldate(now)} for {member.mention} (`{member}`) with"
+            f"<t:{int(now.timestamp())}:D> for {member.mention} (`{member}`) with"
             f" {points} "
             f"infraction point{'' if points == 1 else 's'} for: "
             f"`{discord.utils.escape_mentions(reason)}`", ctx.guild.id, member.id, ctx.author.id)
@@ -719,10 +719,10 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                   f"WHERE user=? AND server=? {deactivated_text} ORDER BY issuedat DESC "
                                   f"LIMIT 25 OFFSET ?",
                                   (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
-                now = datetime.now(tz=timezone.utc)
+                # now = datetime.now(tz=timezone.utc)
                 async for warn in cursor:
                     issuedby = await self.bot.fetch_user(warn[1])
-                    issuedat = datetime.fromtimestamp(warn[2], tz=timezone.utc)
+                    issuedat = warn[2]
                     reason = warn[3]
                     points = warn[5]
                     embed.add_field(name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
@@ -730,8 +730,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                     value=
                                     f"Reason: {reason}\n"
                                     f"Issued by: {issuedby.mention}\n"
-                                    f"Issued {humanize.naturaltime(issuedat, when=now)} "
-                                    f"({humanize.naturaldate(issuedat)})", inline=False)
+                                    f"Issued <t:{int(issuedat)}:f> "
+                                    f"(<t:{int(issuedat)}:R>)", inline=False)
             async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
                                   (member.id, ctx.guild.id)) as cur:
                 warncount = (await cur.fetchone())[0]
@@ -778,10 +778,10 @@ class ModerationCog(commands.Cog, name="Moderation"):
                         moderator: typing.Optional[discord.User] = await self.bot.fetch_user(log[3])
                     else:
                         moderator = None
-                    issuedat = datetime.fromtimestamp(log[1], tz=timezone.utc)
+                    issuedat = log[1]
                     text = log[0]
                     embed.add_field(
-                        name=f"{humanize.naturaltime(issuedat, when=now)} ({humanize.naturaldate(issuedat)})",
+                        name=f"<t:{int(issuedat)}:f> (<t:{int(issuedat)}:R>)",
                         value=
                         text + ("\n\n" if user or moderator else "") +
                         (f"**User**: {user.mention}\n" if user else "") +
