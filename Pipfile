@@ -4,9 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"discord.py" = "*"
+# dpy 2
+"discord.py" = {git = "https://github.com/Rapptz/discord.py.git"}
 coloredlogs = "*"
-humanize = "*"
+# https://github.com/jmoiron/humanize/pull/204
+humanize = {git = "https://github.com/HexCodeFFF/humanize.git"}
 aiosqlite = "*"
 aioscheduler = "*"
 python-twitter = "*"
