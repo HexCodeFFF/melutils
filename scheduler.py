@@ -11,7 +11,7 @@ import modlog
 from clogs import logger
 
 scheduler = TimedScheduler(prefer_utc=True)
-botcopy = commands.Bot
+botcopy: commands.Bot
 loadedtasks = dict()  # keep track of task objects to cancel if needed.
 
 

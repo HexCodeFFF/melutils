@@ -124,7 +124,7 @@
         },
         "discord-py": {
             "git": "https://github.com/Rapptz/discord.py.git",
-            "ref": "ecf239d2a2e6ee8e027ca5fef9acf4564a9f3a09"
+            "ref": "06a371e80a8489018c74c6f126e67568b3127368"
         },
         "discord.py": {
             "git": "https://github.com/Rapptz/discord.py.git"

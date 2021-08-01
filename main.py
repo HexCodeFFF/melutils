@@ -1,5 +1,6 @@
 import glob
 import os
+import sqlite3
 
 import discord
 from discord.ext import commands
@@ -21,9 +22,21 @@ if not os.path.exists(config.temp_dir.rstrip("/")):
     os.mkdir(config.temp_dir.rstrip("/"))
 for f in glob.glob(f'{config.temp_dir}*'):
     os.remove(f)
+# init db if not ready
+logger.debug("checking db")
+con = sqlite3.connect("database.sqlite")
+cur = con.execute("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name != 'sqlite_master' "
+                  "AND name != 'sqlite_sequence'")
+numoftables = cur.fetchone()[0]
+if numoftables == 0:
+    logger.debug("detected empty database, initializing")
+    with open("makedatabase.sql", "r") as f:
+        makesql = f.read()
+    with con:
+        con.executescript(makesql)
+    logger.debug("initialized db!")
 
-intents = discord.Intents.default()
-intents.members = True
+intents = discord.Intents(members=True)
 activity = discord.Activity(name=f"to big gay | {config.command_prefix}help", type=discord.ActivityType.listening)
 bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity,
                    intents=intents)
