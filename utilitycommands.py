@@ -139,7 +139,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
             outattachments = []
             for att in ctx.message.attachments:
                 outattachments.append(await att.to_file(spoiler=True))
-            embed = discord.Embed().set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+            embed = discord.Embed().set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar.url)
             if content:
                 content = f"|| {discord.utils.escape_markdown(content)} ||"
             if content or outattachments:
@@ -155,8 +155,8 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 for att in ctx.message.reference.resolved.attachments:
                     outattachments.append(await att.to_file(spoiler=True))
                 embed = discord.Embed().set_author(name=ctx.message.reference.resolved.author.display_name,
-                                                   icon_url=ctx.message.reference.resolved.author.avatar_url)
-                embed.set_footer(text=f"Spoilered by {ctx.author.display_name}", icon_url=ctx.author.avatar_url)
+                                                   icon_url=ctx.message.reference.resolved.author.avatar.url)
+                embed.set_footer(text=f"Spoilered by {ctx.author.display_name}", icon_url=ctx.author.avatar.url)
                 content = f"|| {discord.utils.escape_markdown(ctx.message.reference.resolved.content)} ||" \
                     if ctx.message.reference.resolved.content else ""
                 await asyncio.gather(
