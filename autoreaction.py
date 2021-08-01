@@ -22,6 +22,7 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
     @mod_only()
     @commands.command(aliases=["addautoreactionrule", "createautoreaction", "createautoreactionrule", "addar", "aar",
                                "createar"])
+    @commands.guild_only()
     async def addautoreaction(self, ctx: commands.Context, channel: typing.Union[discord.TextChannel, discord.Thread],
                               emoji: discord.Emoji, react_to_threads: bool = False):
         """
@@ -41,6 +42,7 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
     @commands.command(
         aliases=["deleteautoreaction", "deleteautoreactionrule", "removeautoreactionrule", "removear", "deletear",
                  "delar", "rar", "dar"])
+    @commands.guild_only()
     async def removeautoreaction(self, ctx: commands.Context,
                                  channel: typing.Union[discord.TextChannel, discord.Thread], emoji: discord.Emoji):
         """
@@ -59,6 +61,7 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
             await ctx.reply("⚠️ No matching autoreaction rule found!")
 
     @commands.command(aliases=["autoreactions", "ars", "ar"])
+    @commands.guild_only()
     async def autoreactionrules(self, ctx: commands.Context):
         """
         list all autoreaction rules
