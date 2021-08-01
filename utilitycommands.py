@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import re
+import time
 import typing
 import zipfile
 from collections import defaultdict
@@ -9,11 +10,11 @@ from datetime import datetime, timezone
 
 import aiohttp
 import discord
+import humanize
 from discord.ext import commands
 from discord.ext.commands import PartialEmojiConversionFailure
 from discord.ext.commands.cooldowns import BucketType
 
-import humanize
 import scheduler
 from clogs import logger
 from timeconverter import TimeConverter
@@ -229,6 +230,16 @@ class UtilityCommands(commands.Cog, name="Utility"):
     async def archiveserveremojis(self, ctx: commands.Context):
         async with ctx.typing():
             await self.partial_emoji_list_to_uploaded_zip(ctx, ctx.guild.emojis)
+
+    @commands.command(aliases=["pong"])
+    async def ping(self, ctx):
+        start = time.perf_counter()
+        message = await ctx.send("Ping...")
+        end = time.perf_counter()
+        duration = (end - start) * 1000
+        await message.edit(content=f'🏓 Pong!\n'
+                                   f'API Latency: `{round(duration)}ms`\n'
+                                   f'Websocket Latency: `{round(self.bot.latency * 1000)}ms`')
 
 
 '''

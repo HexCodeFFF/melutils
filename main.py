@@ -8,6 +8,7 @@ from discord.ext import commands
 import config
 import scheduler
 from admincommands import AdminCommands
+from autoreaction import AutoReactionCog
 from clogs import logger
 from errhandler import ErrorHandler
 from funcommands import FunCommands
@@ -16,6 +17,7 @@ from helpcommand import HelpCommand
 from macro import MacroCog
 from moderation import ModerationCog
 from modlog import ModLogInitCog
+from threadutils import ThreadUtilsCog
 from utilitycommands import UtilityCommands
 
 if not os.path.exists(config.temp_dir.rstrip("/")):
@@ -25,8 +27,8 @@ for f in glob.glob(f'{config.temp_dir}*'):
 # init db if not ready
 logger.debug("checking db")
 con = sqlite3.connect("database.sqlite")
-cur = con.execute("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name != 'sqlite_master' "
-                  "AND name != 'sqlite_sequence'")
+cur = con.execute("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name != 'sqlite_master' AND name != "
+                  "'sqlite_sequence'")
 numoftables = cur.fetchone()[0]
 if numoftables == 0:
     logger.debug("detected empty database, initializing")
@@ -36,7 +38,8 @@ if numoftables == 0:
         con.executescript(makesql)
     logger.debug("initialized db!")
 
-intents = discord.Intents(members=True)
+intents = discord.Intents.default()
+intents.members = True
 activity = discord.Activity(name=f"to big gay | {config.command_prefix}help", type=discord.ActivityType.listening)
 bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity,
                    intents=intents)
@@ -50,6 +53,8 @@ bot.add_cog(scheduler.ScheduleInitCog(bot))
 bot.add_cog(ModLogInitCog(bot))
 bot.add_cog(FunnyBanner(bot))
 bot.add_cog(MacroCog(bot))
+bot.add_cog(AutoReactionCog(bot))
+bot.add_cog(ThreadUtilsCog(bot))
 
 
 def logcommand(cmd):

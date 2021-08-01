@@ -6,10 +6,10 @@ from numbers import Number
 
 import aiosqlite
 import discord
+import humanize
 from discord.ext import commands
 from discord.ext.commands import Greedy
 
-import humanize
 import modlog
 import scheduler
 from clogs import logger

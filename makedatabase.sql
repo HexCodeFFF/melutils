@@ -74,3 +74,10 @@ create table warnings
 	points float default 1 not null
 );
 
+create table auto_reactions
+(
+	guild int not null,
+	channel int not null,
+	emoji int not null,
+	react_to_threads bool default false not null
+);

@@ -1,9 +1,9 @@
 import typing
+from datetime import datetime, timezone
 
 import aiosqlite
 import discord
 from discord.ext import commands
-from datetime import datetime, timezone
 
 botcopy = commands.Bot
 

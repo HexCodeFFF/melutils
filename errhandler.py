@@ -8,7 +8,6 @@ from discord.ext import commands
 
 import config
 from clogs import logger
-from tempfiles import TempFileSession, temp_file
 
 
 class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
@@ -55,12 +54,8 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
             err = f"{config.emojis['clock']} {errorstring}"
             logger.warning(err)
             await ctx.reply(err)
-        elif isinstance(commanderror, discord.ext.commands.errors.MissingRequiredArgument):
+        elif isinstance(commanderror, discord.ext.commands.errors.UserInputError):
             err = f"{config.emojis['question']} {errorstring}"
-            logger.warning(err)
-            await ctx.reply(err)
-        elif isinstance(commanderror, discord.ext.commands.errors.BadArgument):
-            err = f"{config.emojis['warning']} Wrong argument type. {errorstring}"
             logger.warning(err)
             await ctx.reply(err)
         elif isinstance(commanderror, discord.ext.commands.errors.CheckFailure):
@@ -74,8 +69,6 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
             if isinstance(commanderror, discord.ext.commands.errors.CommandInvokeError):
                 commanderror = commanderror.original
             logger.error(commanderror, exc_info=(type(commanderror), commanderror, commanderror.__traceback__))
-            # with TempFileSession() as tempfilesession:
-            tr = temp_file("txt")
             trheader = f"DATETIME:{datetime.datetime.now()}\nCOMMAND:{ctx.message.content}\nTRACEBACK:\n"
             # with open(tr, "w+", encoding="UTF-8") as t:
 

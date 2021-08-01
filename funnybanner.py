@@ -21,7 +21,10 @@ def run_in_executor(f):
     return inner
 
 
-class FunnyBanner(commands.Cog):
+class FunnyBanner(commands.Cog, name="Funny Banner"):
+    """
+    send an image from @awesomepapers or set it as a banner
+    """
     def __init__(self, bot):
         self.bot = bot
         self.api = twitter.Api(

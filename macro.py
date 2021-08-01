@@ -13,13 +13,19 @@ def alphanumeric(argument: str):
     return ''.join(i for i in argument if i.isalnum())
 
 
-class MacroCog(commands.Cog):
+class MacroCog(commands.Cog, name="Macros"):
+    """
+    Create and use "macros", text snippets sendable with a command
+    """
     def __init__(self, bot):
         self.bot = bot
 
     @mod_only()
-    @commands.command()
+    @commands.command(aliases=["createmacro", "newmacro", "setmacro"])
     async def addmacro(self, ctx: commands.Context, name: alphanumeric, *, content):
+        """
+        create a macro
+        """
         async with aiosqlite.connect("database.sqlite") as db:
             await db.execute(
                 "REPLACE INTO macros(server,name,content) VALUES (?,?,?)",
@@ -29,8 +35,11 @@ class MacroCog(commands.Cog):
         await modlog(f"{ctx.author.mention} (`{ctx.author}`) added macro `{name}`.", ctx.guild.id, modid=ctx.author.id)
 
     @mod_only()
-    @commands.command()
+    @commands.command(aliases=["deletemacro"])
     async def removemacro(self, ctx: commands.Context, name):
+        """
+        remove a macro
+        """
         async with aiosqlite.connect("database.sqlite") as db:
             cur = await db.execute(
                 "DELETE FROM macros WHERE server=? AND name=?",
@@ -45,6 +54,9 @@ class MacroCog(commands.Cog):
 
     @commands.command(aliases=["m", "tag"])
     async def macro(self, ctx: commands.Context, name):
+        """
+        call a macro
+        """
         async with aiosqlite.connect("database.sqlite") as db:
             async with db.execute("SELECT content FROM macros WHERE server=? AND name=?", (ctx.guild.id, name)) as cur:
                 result = await cur.fetchone()
@@ -55,7 +67,9 @@ class MacroCog(commands.Cog):
 
     @commands.command(aliases=["listmacros", "allmacros", "lm"])
     async def macros(self, ctx: commands.Context):
-        macros = []
+        """
+        list all available macros
+        """
         async with aiosqlite.connect("database.sqlite") as db:
             async with db.execute("SELECT name FROM macros WHERE server=?",
                                   (ctx.guild.id,)) as cursor:
