@@ -25,8 +25,8 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
     async def on_command_error(self, ctx, commanderror):
         errorstring = discord.utils.escape_mentions(discord.utils.escape_markdown(str(commanderror)))
         if isinstance(commanderror, discord.Forbidden):
-            if not ctx.me.permissions_in(ctx.channel).send_messages:
-                if ctx.me.permissions_in(ctx.author).send_messages:
+            if not ctx.channel.permissions_for(ctx.me).send_messages:
+                if ctx.author.permissions_for(ctx.me).send_messages:
                     err = f"{config.emojis['x']} I don't have permissions to send messages in that channel."
                     await ctx.author.send(err)
                     logger.warning(err)

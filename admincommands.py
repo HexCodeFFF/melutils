@@ -25,19 +25,12 @@ class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
         await ctx.reply("✅ Shutting down.")
         await self.bot.close()
 
-    # @commands.command()
-    # @commands.is_owner()
-    # async def sayhere(self, ctx, *, msg):
-    #     if ctx.me.permissions_in(ctx.channel).manage_messages:
-    #         asyncio.create_task(ctx.message.delete())
-    #     asyncio.create_task(ctx.channel.send(msg))
-
     @commands.command()
     @commands.is_owner()
     async def say(self, ctx, channel: typing.Optional[typing.Union[discord.TextChannel, discord.User]], *, msg):
         if not channel:
             channel = ctx.channel
-        if ctx.me.permissions_in(ctx.channel).manage_messages:
+        if ctx.channel.permissions_for(ctx.me).manage_messages:
             asyncio.create_task(ctx.message.delete())
         asyncio.create_task(channel.send(msg))
 

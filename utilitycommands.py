@@ -149,8 +149,8 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     ctx.message.delete()
                 )
                 return
-            elif ctx.message.reference and (ctx.author.permissions_in(
-                    ctx.channel).manage_messages or ctx.message.reference.resolved.author == ctx.author):
+            elif ctx.message.reference and (ctx.channel.permissions_for(
+                    ctx.author).manage_messages or ctx.message.reference.resolved.author == ctx.author):
                 outattachments = []
                 for att in ctx.message.reference.resolved.attachments:
                     outattachments.append(await att.to_file(spoiler=True))

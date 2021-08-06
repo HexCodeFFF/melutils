@@ -72,7 +72,8 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
                 arrules = await cursor.fetchall()
         outstr = f"{len(arrules)} autoreaction rule{'' if len(arrules) == 1 else 's'}:\n"
         for rule in arrules:
-            outstr += f"<#{rule[1]}>: {discord.utils.get(ctx.guild.emojis, id=rule[2])}{' (applies to threads)' if rule[3] else ''}"
+            outstr += f"<#{rule[1]}>: {discord.utils.get(ctx.guild.emojis, id=rule[2])}" \
+                      f"{' (applies to threads)' if rule[3] else ''}\n"
         if len(outstr) < 2000:
             await ctx.reply(outstr, allowed_mentions=discord.AllowedMentions.none())
         else:
