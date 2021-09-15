@@ -196,7 +196,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
 
     async def partial_emoji_list_to_uploaded_zip(self, ctx: commands.Context, emojis: typing.List[
         typing.Union[discord.Emoji, discord.PartialEmoji]]):
-        emoji_bytes = await asyncio.gather(*[emoji.url.read() for emoji in emojis])
+        emoji_bytes = await asyncio.gather(*[emoji.read() for emoji in emojis])
         with io.BytesIO() as archive:
             with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as zip_archive:
                 for i, emoji in enumerate(emoji_bytes):
@@ -228,7 +228,24 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.cooldown(1, 30, BucketType.guild)
     async def archiveserveremojis(self, ctx: commands.Context):
         async with ctx.typing():
-            await self.partial_emoji_list_to_uploaded_zip(ctx, ctx.guild.emojis)
+            await self.partial_emoji_list_to_uploaded_zip(ctx, list(ctx.guild.emojis))
+
+    async def sticker_list_to_uploaded_zip(self, ctx: commands.Context, stickers: tuple[discord.GuildSticker]):
+        sticker_bytes = await asyncio.gather(*[sticker.read() for sticker in stickers])
+        with io.BytesIO() as archive:
+            with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as zip_archive:
+                for i, sticker in enumerate(sticker_bytes):
+                    zip_archive.writestr(f"{i}_{stickers[i].name}."
+                                         f"{'json' if stickers[i].format == discord.StickerFormatType.lottie else 'png'}",
+                                         bytes(sticker))
+            archive.seek(0)
+            await ctx.reply(file=discord.File(fp=archive, filename="stickers.zip"))
+
+    @commands.command()
+    @commands.cooldown(1, 30, BucketType.guild)
+    async def archiveserverstickers(self, ctx: commands.Context):
+        async with ctx.typing():
+            await self.sticker_list_to_uploaded_zip(ctx, ctx.guild.stickers)
 
     @commands.command(aliases=["pong"])
     async def ping(self, ctx):
