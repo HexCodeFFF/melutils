@@ -257,6 +257,24 @@ class UtilityCommands(commands.Cog, name="Utility"):
                                    f'API Latency: `{round(duration)}ms`\n'
                                    f'Websocket Latency: `{round(self.bot.latency * 1000)}ms`')
 
+    @commands.command()
+    @commands.is_owner()
+    async def sendallstaticemojis(self, ctx: commands.Context):
+        msgs = await asyncio.gather(*[ctx.send(str(emoji)) for emoji in ctx.guild.emojis if not emoji.animated])
+        await asyncio.gather(*[message.add_reaction("✅") for message in msgs])
+
+    @commands.command()
+    @commands.is_owner()
+    async def sendallanimatedemojis(self, ctx: commands.Context):
+        msgs = await asyncio.gather(*[ctx.send(str(emoji)) for emoji in ctx.guild.emojis if emoji.animated])
+        await asyncio.gather(*[message.add_reaction("✅") for message in msgs])
+
+    @commands.command()
+    @commands.is_owner()
+    async def sendallstickers(self, ctx: commands.Context):
+        msgs = await asyncio.gather(*[ctx.send(stickers=[sticker]) for sticker in ctx.guild.stickers])
+        await asyncio.gather(*[message.add_reaction("✅") for message in msgs])
+
 
 '''
 Steps to convert:
