@@ -1,3 +1,4 @@
+-- we don't know how to generate root <with-no-name> (class Root) :(
 create table auto_punishment
 (
 	guild int not null,
@@ -7,6 +8,22 @@ create table auto_punishment
 	warn_timespan int,
 	constraint no_dupes
 		unique (guild, warn_count)
+);
+
+create table auto_reactions
+(
+	guild int not null,
+	channel int not null,
+	emoji int not null,
+	react_to_threads bool default false not null
+);
+
+create table birthdays
+(
+	user int not null
+		constraint birthdays_pk
+			primary key,
+	birthday int not null
 );
 
 create table macros
@@ -74,10 +91,3 @@ create table warnings
 	points float default 1 not null
 );
 
-create table auto_reactions
-(
-	guild int not null,
-	channel int not null,
-	emoji int not null,
-	react_to_threads bool default false not null
-);

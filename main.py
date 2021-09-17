@@ -19,6 +19,7 @@ from moderation import ModerationCog
 from modlog import ModLogInitCog
 from threadutils import ThreadUtilsCog
 from utilitycommands import UtilityCommands
+from birthday import BirthdayCog
 
 if not os.path.exists(config.temp_dir.rstrip("/")):
     os.mkdir(config.temp_dir.rstrip("/"))
@@ -55,6 +56,7 @@ bot.add_cog(FunnyBanner(bot))
 bot.add_cog(MacroCog(bot))
 bot.add_cog(AutoReactionCog(bot))
 bot.add_cog(ThreadUtilsCog(bot))
+bot.add_cog(BithdayCog(bot))
 
 
 def logcommand(cmd):
