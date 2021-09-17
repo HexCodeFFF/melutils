@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 
 
@@ -6,6 +5,7 @@ class FunCommands(commands.Cog, name="Fun"):
     """
     commands for entertainment
     """
+
     def __init__(self, bot):
         self.bot = bot
         self.regionals = {'a': '\N{REGIONAL INDICATOR SYMBOL LETTER A}', 'b': '\N{REGIONAL INDICATOR SYMBOL LETTER B}',
@@ -31,6 +31,15 @@ class FunCommands(commands.Cog, name="Fun"):
 
     @commands.command()
     async def owoify(self, ctx, *, text="above"):
+        """
+        sends your message like a furry would
+
+        replaces r and l with w
+
+        :param ctx: discord context
+        :param text: the text to "owoify". if text is "above", owoifies last message in channel
+        :return: owoified text
+        """
         if text == "above":
             messages = await ctx.channel.history(limit=1, before=ctx.message).flatten()
             text = messages[0].content
@@ -39,6 +48,12 @@ class FunCommands(commands.Cog, name="Fun"):
 
     @commands.command()
     async def sparkle(self, ctx, *, text="above"):
+        """
+        Gives your text a little ✨ *e x t r a   f l a i r* ✨
+        :param ctx: discord context
+        :param text: the text to "sparkle". if text is "above", sparkles last message in channel
+        :return: sparkled text
+        """
         if text == "above":
             messages = await ctx.channel.history(limit=1, before=ctx.message).flatten()
             text = messages[0].content
@@ -46,6 +61,12 @@ class FunCommands(commands.Cog, name="Fun"):
 
     @commands.command()
     async def clap(self, ctx, *, text="above"):
+        """
+        make your point like👏a👏twitter👏user👏would
+        :param ctx: discord context
+        :param text: the text to "clap". if text is "above", claps last message in channel
+        :return: clapped text
+        """
         if text == "above":
             messages = await ctx.channel.history(limit=1, before=ctx.message).flatten()
             text = messages[0].content
@@ -53,6 +74,12 @@ class FunCommands(commands.Cog, name="Fun"):
 
     @commands.command()
     async def regional(self, ctx, *, msg="above"):
+        """
+        make your text 🇱​🇦​🇷​🇬​🇪
+        :param ctx:
+        :param msg:
+        :return:
+        """
         if msg == "above":
             messages = await ctx.channel.history(limit=1, before=ctx.message).flatten()
             msg = messages[0].content

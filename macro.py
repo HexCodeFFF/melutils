@@ -24,7 +24,11 @@ class MacroCog(commands.Cog, name="Macros"):
     @commands.command(aliases=["createmacro", "newmacro", "setmacro"])
     async def addmacro(self, ctx: commands.Context, name: alphanumeric, *, content):
         """
-        create a macro
+        creates a macro
+
+        :param ctx: discord context
+        :param name: name of the macro
+        :param content: macro content
         """
         async with aiosqlite.connect("database.sqlite") as db:
             await db.execute(
@@ -38,7 +42,10 @@ class MacroCog(commands.Cog, name="Macros"):
     @commands.command(aliases=["deletemacro"])
     async def removemacro(self, ctx: commands.Context, name):
         """
-        remove a macro
+        removes a macro
+
+        :param ctx: discord context
+        :param name: name of the macro
         """
         async with aiosqlite.connect("database.sqlite") as db:
             cur = await db.execute(
@@ -55,7 +62,10 @@ class MacroCog(commands.Cog, name="Macros"):
     @commands.command(aliases=["m", "tag"])
     async def macro(self, ctx: commands.Context, name):
         """
-        call a macro
+        send the content of a macro
+        :param ctx: discord content
+        :param name: the name of the macro
+        :return: macro content
         """
         async with aiosqlite.connect("database.sqlite") as db:
             async with db.execute("SELECT content FROM macros WHERE server=? AND name=?", (ctx.guild.id, name)) as cur:

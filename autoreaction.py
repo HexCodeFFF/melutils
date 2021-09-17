@@ -27,6 +27,10 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
                               emoji: discord.Emoji, react_to_threads: bool = False):
         """
         create a new autoreaction rule
+        :param ctx: discord context
+        :param channel: channel to react in
+        :param emoji: emoji to react with
+        :param react_to_threads: should I react to threads of the channel?
         """
         async with aiosqlite.connect("database.sqlite") as db:
             await db.execute(
@@ -47,6 +51,10 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
                                  channel: typing.Union[discord.TextChannel, discord.Thread], emoji: discord.Emoji):
         """
         remove an autoreaction rule
+
+        :param ctx: discord context
+        :param channel: channel of reactions
+        :param emoji: emoji to no longer react with
         """
         async with aiosqlite.connect("database.sqlite") as db:
             cur = await db.execute(

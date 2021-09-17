@@ -66,6 +66,12 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.cooldown(1, 60, BucketType.guild)
     @commands.command()
     async def messagecount(self, ctx, channel: discord.TextChannel = None):
+        """
+        count the number of messages in a discord channel.
+        :param ctx: discord context
+        :param channel: the text channel to count the messages. if unspecified, uses this channel.
+        :return: the number of messages
+        """
         channel = channel or ctx.channel
         async with ctx.channel.typing():
             count = 0
@@ -76,6 +82,12 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.cooldown(1, 60, BucketType.guild)
     @commands.command()
     async def mediacount(self, ctx, channel: discord.TextChannel = None):
+        """
+        count the amount of media in a discord channel.
+        :param ctx: discord context
+        :param channel: the text channel to count the media. if unspecified, uses this channel.
+        :return: the amount of media
+        """
         channel = channel or ctx.channel
         async with ctx.channel.typing():
             count = 0
@@ -90,6 +102,12 @@ class UtilityCommands(commands.Cog, name="Utility"):
 
     @commands.command(aliases=["remind", "remindme", "messagemein"])
     async def reminder(self, ctx, when: TimeConverter, *, reminder):
+        """
+        set a reminder.
+        :param ctx: discord context
+        :param when: how long from now to remind you
+        :param reminder: the reminder text
+        """
         scheduletime = datetime.now(tz=timezone.utc) + when
         await scheduler.schedule(scheduletime, "message",
                                  {"channel": ctx.author.id, "message": f"Here's your reminder: {reminder}"})
@@ -100,6 +118,11 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.cooldown(1, 60 * 60 * 24, BucketType.guild)
     @commands.command()
     async def emojicount(self, ctx):
+        """
+        count the amount of times each emoji was used in an entire server.
+        :param ctx: discord context
+        :return: a JSON file containing each emoji and how many usages were counted.
+        """
         replystr = f"Gathering emoji statistics for **{ctx.guild.name}**. This may take a while."
         replymsg = await ctx.reply(replystr)
         messagecount = 0
@@ -132,7 +155,13 @@ class UtilityCommands(commands.Cog, name="Utility"):
     async def spoiler(self, ctx: commands.Context, *, content=""):
         """
         Spoiler a message and its attachments.
-        If you have manage message permissions, you can reply to a message with just `m.spoiler` to reupload the message spoilered and delete the original.
+
+        If you have manage message permissions,
+        you can reply to a message with just `m.spoiler` to reupload the message spoilered and delete the original.
+
+        :param ctx: discord context
+        :param content: the message to spoiler.
+        :return: the message and its attachments spoilered.
         """
         async with ctx.typing():
             outattachments = []
@@ -174,6 +203,10 @@ class UtilityCommands(commands.Cog, name="Utility"):
     async def fakeconversation(self, ctx: commands.Context, *, content: str):
         """
         Generate a fake conversation using webhooks.
+
+        :param ctx: discord context
+        :param content: the fake conversation. start a message with A-Z or 0-9 to differentiate members.
+        :return: each fake webhook member will send a message in the current channel to create the conversation
         """
         webhook = None
         webhooks = await ctx.channel.webhooks()
@@ -208,6 +241,12 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.command()
     @commands.cooldown(1, 30, BucketType.user)
     async def zipemojis(self, ctx: commands.Context, *messages: discord.Message):
+        """
+        zip all emojis contained in one or more messages.
+        :param ctx: discord context
+        :param messages: the ID(s) of messages containing emojis
+        :return: a zip file containing any emojis found in the messages.
+        """
         async with ctx.typing():
             regex = r"<(a?):([a-zA-Z0-9\_]+):([0-9]+)>"
             emojis = []
@@ -227,6 +266,11 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.command()
     @commands.cooldown(1, 30, BucketType.guild)
     async def archiveserveremojis(self, ctx: commands.Context):
+        """
+        zip every emoji in a server.
+        :param ctx: discord context
+        :return: zip file containing all emojis
+        """
         async with ctx.typing():
             await self.partial_emoji_list_to_uploaded_zip(ctx, list(ctx.guild.emojis))
 
@@ -244,11 +288,21 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.command()
     @commands.cooldown(1, 30, BucketType.guild)
     async def archiveserverstickers(self, ctx: commands.Context):
+        """
+        zip every sticker in a server.
+        :param ctx: discord context
+        :return: zip file containing all stickers
+        """
         async with ctx.typing():
             await self.sticker_list_to_uploaded_zip(ctx, ctx.guild.stickers)
 
     @commands.command(aliases=["pong"])
     async def ping(self, ctx):
+        """
+        pong!
+        :param ctx:
+        :return: a message containing the API and websocket latency in ms.
+        """
         start = time.perf_counter()
         message = await ctx.send("Ping...")
         end = time.perf_counter()
@@ -257,19 +311,19 @@ class UtilityCommands(commands.Cog, name="Utility"):
                                    f'API Latency: `{round(duration)}ms`\n'
                                    f'Websocket Latency: `{round(self.bot.latency * 1000)}ms`')
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def sendallstaticemojis(self, ctx: commands.Context):
         msgs = await asyncio.gather(*[ctx.send(str(emoji)) for emoji in ctx.guild.emojis if not emoji.animated])
         await asyncio.gather(*[message.add_reaction("✅") for message in msgs])
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def sendallanimatedemojis(self, ctx: commands.Context):
         msgs = await asyncio.gather(*[ctx.send(str(emoji)) for emoji in ctx.guild.emojis if emoji.animated])
         await asyncio.gather(*[message.add_reaction("✅") for message in msgs])
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def sendallstickers(self, ctx: commands.Context):
         msgs = await asyncio.gather(*[ctx.send(stickers=[sticker]) for sticker in ctx.guild.stickers])

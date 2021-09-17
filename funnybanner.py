@@ -65,6 +65,7 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
     async def awesomepaper(self, ctx):
         """
         Sends a random image from @awesomepapers on twitter.
+        :returns: the image
         """
         async with ctx.typing():
             await ctx.reply(await self.get_random_media_from_user("awesomepapers"))
@@ -75,7 +76,6 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
     async def awesomebanner(self, ctx):
         """
         sets the guild banner to a random image from @awesomepapers on twitter
-
         """
         async with ctx.typing():
             if "BANNER" not in ctx.guild.features:

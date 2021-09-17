@@ -341,7 +341,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         Sets the server moderator role.
         Anyone who has the mod role can use commands such as mute and warn.
 
-        :Param=role - The moderator role, leave blank to remove the modrole from this server
+        :param ctx:
+        :param role: The moderator role, leave blank to remove the modrole from this server
         """
         if role is None:
             await update_server_config(ctx.guild.id, "mod_role", None)
@@ -362,7 +363,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         Sets the server thin ice role and activates the thin ice system.
         Anyone who has the mod role can use commands such as mute and warn.
 
-        :Param=role - The thin ice role, leave blank to remove the thin ice system from this server
+        :param ctx: discord context
+        :param role: The thin ice role, leave blank to remove the thin ice system from this server
         """
         if role is None:
             await update_server_config(ctx.guild.id, "thin_ice_role", None)
@@ -382,7 +384,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         Sets the amount of points someone has to get on thin ice to be permanently banned.
 
-        :Param=threshold - the amount of points someone has to get on thin ice to be permanently banned.
+        :param ctx: discord context
+        :param threshold: - the amount of points someone has to get on thin ice to be permanently banned.
         """
         assert threshold >= 1
         await update_server_config(ctx.guild.id, "thin_ice_threshold", threshold)
@@ -395,20 +398,21 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                "setmodlog"])
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def logchannel(self, ctx, *, ch: typing.Optional[discord.TextChannel] = None):
+    async def logchannel(self, ctx, *, channel: typing.Optional[discord.TextChannel] = None):
         """
         Sets the server modlog channel.
         All moderator actions will be logged in this channel.
 
-        :Param=channel - The modlog channel, leave blank to remove the modlog from this server
+        :param ctx: discord context
+        :param channel: - The modlog channel, leave blank to remove the modlog from this server
         """
-        if ch is None:
+        if channel is None:
             await update_server_config(ctx.guild.id, "log_channel", None)
             await ctx.reply("✔️ Removed server modlog channel.")
         else:
-            await update_server_config(ctx.guild.id, "log_channel", ch.id)
-            await ctx.reply(f"✔️ Set server modlog channel to **{discord.utils.escape_mentions(ch.mention)}**")
-            await ch.send(f"This is the new modlog channel for {ctx.guild.name}!")
+            await update_server_config(ctx.guild.id, "log_channel", channel.id)
+            await ctx.reply(f"✔️ Set server modlog channel to **{discord.utils.escape_mentions(channel.mention)}**")
+            await channel.send(f"This is the new modlog channel for {ctx.guild.name}!")
 
     @commands.command(aliases=["banappeal"])
     @commands.has_guild_permissions(manage_guild=True)
@@ -418,7 +422,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         Sets the server modlog channel.
         All moderator actions will be logged in this channel.
 
-        :Param=channel - The ban appeal link, leave blank to remove the modlog from this server
+        :param ctx: discord context
+        :param ban_appeal_link: - The ban appeal link, leave blank to remove the modlog from this server
         """
         if ban_appeal_link is None:
             await update_server_config(ctx.guild.id, "ban_appeal_link", None)
@@ -438,11 +443,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
                   ban_length: typing.Optional[TimeConverter] = None, *,
                   reason: str = "No reason provided."):
         """
-        Ban/temp-ban a member or several.
+        temporarily or permanently ban one or more members
 
-        :Param=members - one or more members to ban
-        :Param=ban_length (optional) - how long to ban them for. don't specify for a permanent ban.
-        :Param=reason (optional) - why the user was banned.
+        :param ctx: discord context
+        :param members: one or more members to ban
+        :param ban_length: how long to ban them for. don't specify for a permanent ban.
+        :param reason: why the user was banned.
         """
         if not members:
             await ctx.reply("❌ members is a required argument that is missing.")
@@ -475,11 +481,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
                    mute_length: typing.Optional[TimeConverter] = None, *,
                    reason: str = "No reason provided."):
         """
-        Mute or tempmute a member or several.
+        temporarily or permanently mute one or more members
 
-        :Param=members - one or more members to mute
-        :Param=mute_length (optional) - how long to mute them for. don't specify for a permanent mute.
-        :Param=reason (optional) - why the user was muted.
+        :param ctx: discord context
+        :param members: one or more members to mute
+        :param mute_length: how long to mute them for. don't specify for a permanent mute.
+        :param reason: why the user was mutes.
         """
         if not members:
             await ctx.reply("❌ members is a required argument that is missing.")
@@ -514,7 +521,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         Unmute one or more members
 
-        :Param=members - one or more members to unmute.
+        :param ctx: discord context
+        :param members: one or more members to unmute.
         """
         if not members:
             await ctx.reply("❌ members is a required argument that is missing.")
@@ -544,7 +552,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         Unban one or more members
 
-        :Param=members - one or more members to unban.
+        :param ctx: discord context
+        :param members: one or more members to unban.
         """
         if not members:
             await ctx.reply("❌ members is a required argument that is missing.")
@@ -577,7 +586,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         Delete a warning.
 
-        :Param=warn_ids - one or more warn IDs to delete. get the ID of a warn with m.warns.
+        :param ctx: discord context
+        :param warn_ids: one or more warn IDs to delete. get the ID of a warn with m.warns.
         """
         if not warn_ids:
             await ctx.reply(f"❌ Specify a warn ID.")
@@ -613,7 +623,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         Undelete a warning.
 
-        :Param=warn_ids - one or more warn IDs to restore. get the ID of a warn with m.warns.
+        :param ctx: discord context
+        :param warn_id: a warn ID to restore. get the ID of a warn with m.warns.
         """
         async with aiosqlite.connect("database.sqlite") as db:
             cur = await db.execute("UPDATE warnings SET deactivated=0 WHERE id=? AND server=? AND deactivated=1",
@@ -633,9 +644,10 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         Warn a member.
 
-        :Param=member - the member to warn.
-        :Param=points (optional, default 1) - the amount of points this warn is worth. think of it as a warn weight.
-        :Param=reason (optional) - the reason for warning the member.
+        :param ctx: discord context
+        :param members: the member(s) to warn.
+        :param points: the amount of points this warn is worth. think of it as a warn weight.
+        :param reason: the reason for warning the member.
         """
         assert points >= 0
         if points > 1:
@@ -667,13 +679,13 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         Creates a warn for a member issued at a custom date. Useful for transferring old warns.
 
-        :Usage=m.oldwarn `member` `dd` `mm` `yyyy` `(points)` `(reason)`
-        :Param=member - the member to warn.
-        :Param=day - part of the date
-        :Param=month - part of the date
-        :Param=year - part of the date
-        :Param=points (optional, default 1) - the amount of points this warn is worth. think of it as a warn weight.
-        :Param=reason (optional) - the reason for warning the member.
+        :param ctx: discord context
+        :param member: the member to warn
+        :param day: day of the warn
+        :param month: month of the warn
+        :param year: year of the warn
+        :param points: the amount of points this warn is worth. think of it as a warn weight.
+        :param reason: the reason for warning the member.
         """
         assert points > 0
         if points > 1:
@@ -706,9 +718,11 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         List a member's warns.
 
-        :Param=member - the member to see the warns of.
-        :Param=page (optional, default 1) - if the user has more than 25 warns, this will let you see pages of warns.
-        :Param=show_deleted (optional, default no) - show deleted warns.
+        :param ctx: discord context
+        :param member: the member to see the warns of.
+        :param page: if the user has more than 25 warns, this will let you see pages of warns.
+        :param show_deleted: show deleted warns.
+        :returns: list of warns
         """
         assert page > 0
         embed = discord.Embed(title=f"Warns for {member.display_name}: Page {page}", color=discord.Color(0xB565D9),
@@ -754,11 +768,14 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @mod_only()
     async def modlogs(self, ctx, member: discord.User, page: int = 1, viewmodactions: bool = False):
         """
-        List a member's warns.
+        List moderator actions taken against a member.
 
-        :Param=member - the member to see the modlogs of.
-        :Param=page (optional, default 1) - if the user has more than 25 modlogs, this will let you see pages of modlogs.
-        :Param=viewmodactions (optional, default no) - set to yes to view the actions the user took as moderator instead of actions taken against them.
+        :param ctx: discord context
+        :param member: the member to see the modlogs of.
+        :param page: if the user has more than 25 modlogs, this will let you see pages of modlogs.
+        :param viewmodactions: set to yes to view the actions the user took as moderator instead of actions taken
+        against them.
+        :returns: list of actions taken against them
         """
         assert page > 0
         embed = discord.Embed(title=f"Modlogs for {member.display_name}: Page {page}", color=discord.Color(0xB565D9),
@@ -811,10 +828,13 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         Adds an automatic punishment based on the amount of points obtained in a certain time period.
 
-        :Param=point_count - the amount of points that will trigger this punishment. each guild can only have 1 punishment per point count.
-        :Param=point_timespan - the timespan that the user must obtain `point_count` point(s) in. specify 0 for no restriction
-        :Param=punishment_type - `mute` or `ban`.
-        :Param=punishment_duration - the duration the punishment will last. specify 0 for infinite duration.
+        :param ctx: discord context
+        :param point_count: the amount of points that will trigger this punishment. each guild can only have 1
+        punishment per point count and timespan.
+        :param point_timespan: the timespan that the user must obtain `point_count` point(s) in. specify 0 for no
+        restriction
+        :param punishment_type: `mute` or `ban`.
+        :param punishment_duration: the duration the punishment will last. specify 0 for infinite duration.
         """
         assert point_count > 0
         punishment_type = punishment_type.lower()
@@ -837,7 +857,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         removes an auto-punishment
 
-        :Param=point_count - the point count of the auto-punishment to remove
+        :param ctx: discord context
+        :param point_count: the point count of the auto-punishment to remove
         """
         assert point_count > 0
         async with aiosqlite.connect("database.sqlite") as db:
@@ -875,6 +896,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
     async def purge(self, ctx, num_messages: int):
+        """
+        bulk delete messages from a channel
+
+        :param ctx: discord context
+        :param num_messages: number of messages before command invocation to delete
+        """
         assert num_messages >= 1
         await asyncio.gather(
             ctx.channel.purge(before=ctx.message, limit=num_messages),

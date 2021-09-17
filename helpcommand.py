@@ -107,6 +107,8 @@ class HelpCommand(commands.Cog, name="Help Command"):
                 if len(paramtext):
                     # join list and add to help
                     embed.add_field(name="Parameters", value="\n".join(paramtext), inline=False)
+                if docstring.returns:
+                    embed.add_field(name="Returns", value=docstring.returns.description, inline=False)
             else:
                 # if no docstring
                 embed.add_field(name="Command Information", value="This command has no information.", inline=False)
