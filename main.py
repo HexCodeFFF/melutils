@@ -56,7 +56,7 @@ bot.add_cog(FunnyBanner(bot))
 bot.add_cog(MacroCog(bot))
 bot.add_cog(AutoReactionCog(bot))
 bot.add_cog(ThreadUtilsCog(bot))
-bot.add_cog(BithdayCog(bot))
+bot.add_cog(BirthdayCog(bot))
 
 
 def logcommand(cmd):

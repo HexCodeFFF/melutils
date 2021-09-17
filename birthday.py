@@ -1,12 +1,7 @@
 import datetime
-import typing
 
 import aiosqlite
-import discord
 from discord.ext import commands
-from clogs import logger
-from moderation import mod_only
-from modlog import modlog
 
 
 class BirthdayCog(commands.Cog, name="Birthday Commands"):
@@ -16,6 +11,15 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
     # command here
     @commands.command()
     async def setbirthday(self, ctx: commands.Context, year: int, month: int, day: int, tz: float = 0):
+        """
+
+        :param ctx:
+        :param year:
+        :param month:
+        :param day:
+        :param tz:
+        :return:
+        """
         try:
             birthday = datetime.datetime(year=year, month=month, day=day,
                                          tzinfo=datetime.timezone(datetime.timedelta(hours=tz)))
@@ -29,7 +33,8 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
                 "VALUES (?,?)",
                 (ctx.author.id, birthday.timestamp()))
             await db.commit()
-        await ctx.reply(f"Set birthday to <t:{birthday.timestamp()}:f>")
+        await ctx.reply(f"Set birthday to <t:{int(birthday.timestamp())}:f>")
+
 
 '''
 Steps to convert:

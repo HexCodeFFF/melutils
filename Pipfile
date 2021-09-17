@@ -12,7 +12,7 @@ humanize = {git = "https://github.com/HexCodeFFF/humanize.git"}
 aiosqlite = "*"
 aioscheduler = "*"
 python-twitter = "*"
-python-dateutil = "*"
+docstring-parser = "*"
 
 [dev-packages]
 
