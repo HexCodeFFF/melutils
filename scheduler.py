@@ -1,9 +1,10 @@
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import aiosqlite
 import discord
+import humanize
 from aioscheduler import TimedScheduler
 from discord.ext import commands
 
@@ -82,6 +83,43 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
             async with aiosqlite.connect("database.sqlite") as db:
                 await db.execute("DELETE FROM thin_ice WHERE guild=? and user=?", (guild.id, member.id))
                 await db.commit()
+        elif eventtype == "birthday":
+            async with aiosqlite.connect("database.sqlite") as db:
+                now = datetime.now(tz=timezone.utc)
+                birthday = datetime.fromtimestamp(eventdata["birthday"], tz=timezone.utc)
+                age = round((now - birthday).days / 365.25)
+                createdchannels = []
+                for guild in botcopy.guilds:
+                    async with db.execute("SELECT birthday_category FROM server_config WHERE guild=?",
+                                          (guild.id,)) as cur:
+                        bcategory = await cur.fetchone()
+                    if bcategory is not None:
+                        member = guild.get_member(eventdata["user"])
+                        bcategoryreal: discord.CategoryChannel = guild.get_channel(bcategory[0])
+                        if bcategoryreal is not None and member is not None:
+
+                            dname = str(filter(lambda x: x.isalnum() or x == "-", member.display_name.lower()))
+                            bchannel = await bcategoryreal.create_text_channel(f"🎂{dname}-birthday"[:32],
+                                                                               reason=f"{member.display_name}'s birthday.")
+                            createdchannels.append(bchannel.id)
+                            await bchannel.send(f"Happy {humanize.ordinal(age)} Birthday {member.mention}!!",
+                                                allowed_mentions=discord.AllowedMentions(everyone=False, roles=False))
+                # schedule next birthday event
+                thisyear = now.year
+                nextbirthday = birthday
+                while nextbirthday < now:
+                    try:
+                        nextbirthday = nextbirthday.replace(year=thisyear)
+                    except ValueError as e:  # leap years are weird
+                        logger.debug(str(e))
+                    thisyear += 1
+                await schedule(nextbirthday, "birthday", {"user": eventdata["user"], "birthday": birthday.timestamp()})
+                # delete birthday channels in 24 hours
+                await schedule(now + timedelta(days=1), "delbirthdaychannel", {"channels": createdchannels})
+        elif eventtype == "delbirthdaychannel":
+            for ch in eventdata["channels"]:
+                channel = botcopy.get_channel(ch)
+                await channel.delete(reason="Birthday is over")
         else:
             logger.error(f"Unknown event type {eventtype} for event {dbrowid}")
 

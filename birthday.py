@@ -1,7 +1,14 @@
 import datetime
+import typing
 
 import aiosqlite
+import discord
 from discord.ext import commands
+
+import moderation
+import modlog
+import scheduler
+from clogs import logger
 
 
 class BirthdayCog(commands.Cog, name="Birthday Commands"):
@@ -28,12 +35,52 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
             return
 
         async with aiosqlite.connect("database.sqlite") as db:
+            # insert birthday into db
             await db.execute(
                 "REPLACE INTO birthdays(user,birthday) "
                 "VALUES (?,?)",
                 (ctx.author.id, birthday.timestamp()))
             await db.commit()
+            # cancel all existing birthday events
+            async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.user\")=? "
+                                  "AND eventtype=?",
+                                  (ctx.author.id, "birthday")) as cur:
+                async for event in cur:
+                    await scheduler.canceltask(event[0])
+            # calculate next birthday
+            now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=tz)))
+            thisyear = now.year
+            nextbirthday = birthday
+            while nextbirthday < now:
+                try:
+                    nextbirthday = nextbirthday.replace(year=thisyear)
+                except ValueError as e:  # leap years are weird
+                    logger.debug(str(e))
+                thisyear += 1
+            # schedule birthday event on next birthday
+            await scheduler.schedule(nextbirthday, "birthday",
+                                     {"user": ctx.author.id, "birthday": birthday.timestamp()})
         await ctx.reply(f"Set birthday to <t:{int(birthday.timestamp())}:f>")
+
+    @commands.command()
+    @moderation.mod_only()
+    async def birthdaycategory(self, ctx, *, category: typing.Optional[discord.CategoryChannel] = None):
+        """
+        Set the category for birthday channels to be created, or disable them.
+
+        :param ctx: discord context
+        :param category: The ID of the category. Leave blank to disable birthday messages for the server.
+        """
+        if category is None:
+            await moderation.update_server_config(ctx.guild.id, "birthday_category", None)
+            await ctx.reply("✔️ Removed server birthday category and disabled birthday messages.")
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed "
+                                f"the server birthday category.", ctx.guild.id, modid=ctx.author.id)
+        else:
+            await moderation.update_server_config(ctx.guild.id, "birthday_category", category.id)
+            await ctx.reply(f"✔️ Set birthday category to **{discord.utils.escape_mentions(category.name)}**")
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
+                                f"server birthday category to **{category.name}**.", ctx.guild.id, modid=ctx.author.id)
 
 
 '''

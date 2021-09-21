@@ -1,4 +1,3 @@
--- we don't know how to generate root <with-no-name> (class Root) :(
 create table auto_punishment
 (
 	guild int not null,
@@ -64,7 +63,8 @@ create table server_config
 	muted_role int,
 	ban_appeal_link text,
 	thin_ice_role int,
-	thin_ice_threshold int default 1 not null
+	thin_ice_threshold int default 1 not null,
+	birthday_category int
 );
 
 create table thin_ice
