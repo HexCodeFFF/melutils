@@ -1,8 +1,6 @@
 import asyncio
-import time
 import typing
 from datetime import datetime, timedelta, timezone
-from numbers import Number
 
 import aiosqlite
 import discord
@@ -243,7 +241,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                   "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
                                   (guild.id, user.id, "unban")) as cur:
                 async for row in cur:
-                    await scheduler.canceltask(row[0])
+                    await scheduler.canceltask(row[0], db)
                     actuallycancelledanytasks = True
             async with db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
                 thin_ice_role = await cur.fetchone()
@@ -270,7 +268,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                   "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
                                   (guild.id, user.id, "un_thin_ice")) as cur:
                 async for row in cur:
-                    await scheduler.canceltask(row[0])
+                    await scheduler.canceltask(row[0], db)
             async with db.execute("SELECT ban_appeal_link FROM server_config WHERE guild=?", (guild.id,)) as cur:
                 ban_appeal_link = await cur.fetchone()
         if ban_appeal_link is not None and ban_appeal_link[0] is not None:
@@ -290,7 +288,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                       "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
                                       (after.guild.id, after.id, "unmute")) as cur:
                     async for row in cur:
-                        await scheduler.canceltask(row[0])
+                        await scheduler.canceltask(row[0], db)
                         actuallycancelledanytasks = True
             if actuallycancelledanytasks:
                 await after.send(f"You were manually unmuted in **{after.guild.name}**.")
@@ -303,13 +301,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                                                                                        in
                                                                                                        after.roles]:  # if muted role manually removed
                     actuallycancelledanytasks = False
-                    async with aiosqlite.connect("database.sqlite") as db:
-                        async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                              "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                              (after.guild.id, after.id, "un_thin_ice")) as cur:
-                            async for row in cur:
-                                await scheduler.canceltask(row[0])
-                                actuallycancelledanytasks = True
+                    async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                                          "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                          (after.guild.id, after.id, "un_thin_ice")) as cur:
+                        async for row in cur:
+                            await scheduler.canceltask(row[0], db)
+                            actuallycancelledanytasks = True
                     if actuallycancelledanytasks:
                         await after.send(f"Your thin ice was manually removed in **{after.guild.name}**.")
 
@@ -534,7 +531,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                       "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
                                       (ctx.guild.id, member.id, "unmute")) as cur:
                     async for row in cur:
-                        await scheduler.canceltask(row[0])
+                        await scheduler.canceltask(row[0], db)
                         await member.remove_roles(muted_role)
 
                 await ctx.reply(f"✔️ Unmuted {member.mention}")
@@ -578,7 +575,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                       "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
                                       (ctx.guild.id, member.id, "unban")) as cur:
                     async for row in cur:
-                        await scheduler.canceltask(row[0])
+                        await scheduler.canceltask(row[0], db)
 
     @commands.command(aliases=["deletewarn", "removewarn", "dwarn", "cancelwarn", "dw"])
     @mod_only()

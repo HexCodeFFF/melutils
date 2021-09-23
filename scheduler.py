@@ -1,6 +1,7 @@
 import asyncio
 import json
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 
 import aiosqlite
 import discord
@@ -97,10 +98,10 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
                         member = guild.get_member(eventdata["user"])
                         bcategoryreal: discord.CategoryChannel = guild.get_channel(bcategory[0])
                         if bcategoryreal is not None and member is not None:
-
-                            dname = str(filter(lambda x: x.isalnum() or x == "-", member.display_name.lower()))
+                            dname = ''.join(c for c in member.display_name.lower() if c.isalnum() or c == "-")
                             bchannel = await bcategoryreal.create_text_channel(f"🎂{dname}-birthday"[:32],
-                                                                               reason=f"{member.display_name}'s birthday.")
+                                                                               reason=f"{member.display_name}"
+                                                                                      f"'s birthday.")
                             createdchannels.append(bchannel.id)
                             await bchannel.send(f"Happy {humanize.ordinal(age)} Birthday {member.mention}!!",
                                                 allowed_mentions=discord.AllowedMentions(everyone=False, roles=False))
@@ -137,7 +138,7 @@ async def schedule(time: datetime, eventtype: str, eventdata: dict):
         async with db.execute("INSERT INTO schedule (eventtime, eventtype, eventdata) VALUES (?,?,?)",
                               (time.timestamp(), eventtype, json.dumps(eventdata))) as cursor:
             lri = cursor.lastrowid
-            timef = time.replace(tzinfo=timezone.utc).replace(tzinfo=None)
+            timef = time.astimezone(tz=timezone.utc).replace(tzinfo=None)
             task = scheduler.schedule(run_event(lri, eventtype, eventdata), timef)
             loadedtasks[lri] = task
             logger.debug(f"scheduled event #{lri} for {time}")
@@ -146,10 +147,16 @@ async def schedule(time: datetime, eventtype: str, eventdata: dict):
     return lri
 
 
-async def canceltask(dbrowid: int):
+async def canceltask(dbrowid: int, db: Optional[aiosqlite.Connection] = None):
     scheduler.cancel(loadedtasks[dbrowid])
-    async with aiosqlite.connect("database.sqlite") as db:
+    if db is None:
+        async with aiosqlite.connect("database.sqlite") as db:
+            await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
+            await db.commit()
+    else:
         await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
         await db.commit()
+    # it throws a runtime warning "coroutine was never ran" like no shit that is the entire idea
+    # TODO: suppress this mf!!
     del loadedtasks[dbrowid]
     logger.debug(f"Cancelled task {dbrowid}")
