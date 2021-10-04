@@ -1,13 +1,17 @@
 import asyncio
 import io
 import json
+import os
+import random
 import re
+import string
 import time
 import typing
 import zipfile
 from collections import defaultdict
 from datetime import datetime, timezone
 
+import aiohttp
 import discord
 import humanize
 from discord.ext import commands
@@ -33,6 +37,38 @@ async def fetch_all(session, urls):
         tasks.append(task)
     results = await asyncio.gather(*tasks)
     return results
+
+
+def get_random_string(length):
+    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
+
+
+def is_named_used(name):
+    return os.path.exists(name)
+
+
+def temp_file_name(extension="png", tempdir="temp/"):
+    while True:
+        if extension is not None:
+            name = f"{tempdir}{get_random_string(8)}.{extension}"
+        else:
+            name = f"{tempdir}{get_random_string(8)}"
+        if not is_named_used(name):
+            return name
+
+
+async def saveurl(url) -> bytes:
+    """
+    save a url to bytes
+    :param url: web url of a file
+    :return: bytes of result
+    """
+    async with aiohttp.ClientSession(headers={'Connection': 'keep-alive'}) as session:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                return await resp.read()
+            else:
+                resp.raise_for_status()
 
 
 class UtilityCommands(commands.Cog, name="Utility"):
@@ -79,7 +115,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 count += 1
             await ctx.reply(f"There are {count} messages in {channel.mention}.")
 
-    @commands.cooldown(1, 60, BucketType.guild)
+    @commands.cooldown(1, 60 * 60, BucketType.channel)
     @commands.command()
     async def mediacount(self, ctx, channel: discord.TextChannel = None):
         """
@@ -99,6 +135,49 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 if len(msg.attachments):
                     count += len(msg.attachments)
             await ctx.reply(f"There are {count} media in {channel.mention}.")
+
+    # @commands.cooldown(1, 60 * 60, BucketType.channel)
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def mediazip(self, ctx, channel: discord.TextChannel = None):
+        """
+        zip all media in channel
+        :param ctx: discord context
+        :param channel: the text channel to zip the media. if unspecified, uses this channel.
+        :return: the amount of media
+        """
+        channel = channel or ctx.channel
+        files = []
+        exts = []
+        async with ctx.channel.typing():
+            async for msg in channel.history(limit=None):
+                if len(msg.embeds):
+                    for embed in msg.embeds:
+                        if embed.type in ["image", "video", "audio", "gifv"]:
+                            files.append(saveurl(embed.url))
+                            exts.append(embed.url.split(".")[-1])
+                if len(msg.attachments):
+                    for att in msg.attachments:
+                        files.append(att.read())
+                        exts.append(att.url.split(".")[-1])
+            filebytes = await asyncio.gather(*files)
+            with io.BytesIO() as archive:
+                with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as zip_archive:
+                    for i, f in enumerate(filebytes):
+                        zip_archive.writestr(f"{i}.{exts[i]}",
+                                             bytes(f))
+                archive.seek(0, 2)
+                size = archive.tell()
+                archive.seek(0)
+                if size < 8388119:
+                    await ctx.reply(file=discord.File(fp=archive, filename="media.zip"))
+                else:
+                    hsize = humanize.filesize.naturalsize(size)
+                    if not os.path.isdir("files"):
+                        os.mkdir("files")
+                    with open(temp_file_name("zip", "files/"), "wb+") as f:
+                        f.write(archive.read())
+                    await ctx.reply(f"File is {hsize}. Wrote to `files/media.zip`.")
 
     @commands.command(aliases=["remind", "remindme", "messagemein"])
     async def reminder(self, ctx, when: TimeConverter, *, reminder):

@@ -13,6 +13,7 @@ aiosqlite = "*"
 aioscheduler = "*"
 python-twitter = "*"
 docstring-parser = "*"
+emojis = "*"
 
 [dev-packages]
 

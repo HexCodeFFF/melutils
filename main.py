@@ -9,6 +9,7 @@ import config
 import scheduler
 from admincommands import AdminCommands
 from autoreaction import AutoReactionCog
+from birthday import BirthdayCog
 from clogs import logger
 from errhandler import ErrorHandler
 from funcommands import FunCommands
@@ -17,9 +18,9 @@ from helpcommand import HelpCommand
 from macro import MacroCog
 from moderation import ModerationCog
 from modlog import ModLogInitCog
+from nitroroles import NitroRolesCog
 from threadutils import ThreadUtilsCog
 from utilitycommands import UtilityCommands
-from birthday import BirthdayCog
 
 if not os.path.exists(config.temp_dir.rstrip("/")):
     os.mkdir(config.temp_dir.rstrip("/"))
@@ -57,6 +58,7 @@ bot.add_cog(MacroCog(bot))
 bot.add_cog(AutoReactionCog(bot))
 bot.add_cog(ThreadUtilsCog(bot))
 bot.add_cog(BirthdayCog(bot))
+bot.add_cog(NitroRolesCog(bot))
 
 
 def logcommand(cmd):
