@@ -711,7 +711,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
     @commands.command(aliases=["warnings", "listwarns", "listwarn", "ws"])
     @mod_only()
-    async def warns(self, ctx, member: discord.Member, page: int = 1, show_deleted: bool = False):
+    async def warns(self, ctx, member: discord.User, page: int = 1, show_deleted: bool = False):
         """
         List a member's warns.
 
