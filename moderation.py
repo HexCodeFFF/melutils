@@ -722,44 +722,46 @@ class ModerationCog(commands.Cog, name="Moderation"):
         :returns: list of warns
         """
         assert page > 0
-        embed = discord.Embed(title=f"Warns for {member.display_name}: Page {page}", color=discord.Color(0xB565D9),
-                              description=member.mention)
-        async with aiosqlite.connect("database.sqlite") as db:
-            deactivated_text = "" if show_deleted else "AND deactivated=0"
-            async with db.execute(f"SELECT id, issuedby, issuedat, reason, deactivated, points FROM warnings "
-                                  f"WHERE user=? AND server=? {deactivated_text} ORDER BY issuedat DESC "
-                                  f"LIMIT 25 OFFSET ?",
-                                  (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
-                # now = datetime.now(tz=timezone.utc)
-                async for warn in cursor:
-                    issuedby = await self.bot.fetch_user(warn[1])
-                    issuedat = warn[2]
-                    reason = warn[3]
-                    points = warn[5]
-                    embed.add_field(name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
-                                         f"{' (Deleted)' if warn[4] else ''}",
-                                    value=
-                                    f"Reason: {reason}\n"
-                                    f"Issued by: {issuedby.mention}\n"
-                                    f"Issued <t:{int(issuedat)}:f> "
-                                    f"(<t:{int(issuedat)}:R>)", inline=False)
-            async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
-                                  (member.id, ctx.guild.id)) as cur:
-                warncount = (await cur.fetchone())[0]
-            async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=1",
-                                  (member.id, ctx.guild.id)) as cur:
-                delwarncount = (await cur.fetchone())[0]
-            async with db.execute("SELECT sum(points) FROM warnings WHERE user=? AND server=? AND deactivated=0",
-                                  (member.id, ctx.guild.id)) as cur:
-                points = (await cur.fetchone())[0]
-                if points is None:
-                    points = 0
-            embed.description += f" has {'%g' % points} point{'' if warncount == 1 else 's'}, " \
-                                 f"{warncount} warn{'' if warncount == 1 else 's'} and " \
-                                 f"{delwarncount} deleted warn{'' if delwarncount == 1 else 's'}"
-            if not embed.fields:
-                embed.add_field(name="No Results", value="Try a different page # or show deleted warns.", inline=False)
-        await ctx.reply(embed=embed)
+        async with ctx.channel.typing():
+            embed = discord.Embed(title=f"Warns for {member.display_name}: Page {page}", color=discord.Color(0xB565D9),
+                                  description=member.mention)
+            async with aiosqlite.connect("database.sqlite") as db:
+                deactivated_text = "" if show_deleted else "AND deactivated=0"
+                async with db.execute(f"SELECT id, issuedby, issuedat, reason, deactivated, points FROM warnings "
+                                      f"WHERE user=? AND server=? {deactivated_text} ORDER BY issuedat DESC "
+                                      f"LIMIT 25 OFFSET ?",
+                                      (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
+                    # now = datetime.now(tz=timezone.utc)
+                    async for warn in cursor:
+                        issuedby = await self.bot.fetch_user(warn[1])
+                        issuedat = warn[2]
+                        reason = warn[3]
+                        points = warn[5]
+                        embed.add_field(name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
+                                             f"{' (Deleted)' if warn[4] else ''}",
+                                        value=
+                                        f"Reason: {reason}\n"
+                                        f"Issued by: {issuedby.mention}\n"
+                                        f"Issued <t:{int(issuedat)}:f> "
+                                        f"(<t:{int(issuedat)}:R>)", inline=False)
+                async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
+                                      (member.id, ctx.guild.id)) as cur:
+                    warncount = (await cur.fetchone())[0]
+                async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=1",
+                                      (member.id, ctx.guild.id)) as cur:
+                    delwarncount = (await cur.fetchone())[0]
+                async with db.execute("SELECT sum(points) FROM warnings WHERE user=? AND server=? AND deactivated=0",
+                                      (member.id, ctx.guild.id)) as cur:
+                    points = (await cur.fetchone())[0]
+                    if points is None:
+                        points = 0
+                embed.description += f" has {'%g' % points} point{'' if warncount == 1 else 's'}, " \
+                                     f"{warncount} warn{'' if warncount == 1 else 's'} and " \
+                                     f"{delwarncount} deleted warn{'' if delwarncount == 1 else 's'}"
+                if not embed.fields:
+                    embed.add_field(name="No Results", value="Try a different page # or show deleted warns.",
+                                    inline=False)
+            await ctx.reply(embed=embed)
 
     @commands.command(aliases=["moderatorlogs", "modlog", "logs"])
     @mod_only()
@@ -775,34 +777,35 @@ class ModerationCog(commands.Cog, name="Moderation"):
         :returns: list of actions taken against them
         """
         assert page > 0
-        embed = discord.Embed(title=f"Modlogs for {member.display_name}: Page {page}", color=discord.Color(0xB565D9),
-                              description=member.mention)
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute(f"SELECT text,datetime,user,moderator FROM modlog "
-                                  f"WHERE {'moderator' if viewmodactions else 'user'}=? AND guild=? "
-                                  f"ORDER BY datetime DESC LIMIT 25 OFFSET ?",
-                                  (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
-                now = datetime.now(tz=timezone.utc)
-                async for log in cursor:
-                    if log[2]:
-                        user: typing.Optional[discord.User] = await self.bot.fetch_user(log[2])
-                    else:
-                        user = None
-                    if log[3]:
-                        moderator: typing.Optional[discord.User] = await self.bot.fetch_user(log[3])
-                    else:
-                        moderator = None
-                    issuedat = log[1]
-                    text = log[0]
-                    embed.add_field(
-                        name=f"<t:{int(issuedat)}:f> (<t:{int(issuedat)}:R>)",
-                        value=
-                        text + ("\n\n" if user or moderator else "") +
-                        (f"**User**: {user.mention}\n" if user else "") +
-                        (f"**Moderator**: {moderator.mention}\n" if moderator else ""), inline=False)
-                if not embed.fields:
-                    embed.add_field(name="No Results", value="Try a different page #.", inline=False)
-                await ctx.reply(embed=embed)
+        async with ctx.channel.typing():
+            embed = discord.Embed(title=f"Modlogs for {member.display_name}: Page {page}",
+                                  color=discord.Color(0xB565D9), description=member.mention)
+            async with aiosqlite.connect("database.sqlite") as db:
+                async with db.execute(f"SELECT text,datetime,user,moderator FROM modlog "
+                                      f"WHERE {'moderator' if viewmodactions else 'user'}=? AND guild=? "
+                                      f"ORDER BY datetime DESC LIMIT 25 OFFSET ?",
+                                      (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
+                    now = datetime.now(tz=timezone.utc)
+                    async for log in cursor:
+                        if log[2]:
+                            user: typing.Optional[discord.User] = await self.bot.fetch_user(log[2])
+                        else:
+                            user = None
+                        if log[3]:
+                            moderator: typing.Optional[discord.User] = await self.bot.fetch_user(log[3])
+                        else:
+                            moderator = None
+                        issuedat = log[1]
+                        text = log[0]
+                        embed.add_field(
+                            name=f"<t:{int(issuedat)}:f> (<t:{int(issuedat)}:R>)",
+                            value=
+                            text + ("\n\n" if user or moderator else "") +
+                            (f"**User**: {user.mention}\n" if user else "") +
+                            (f"**Moderator**: {moderator.mention}\n" if moderator else ""), inline=False)
+                    if not embed.fields:
+                        embed.add_field(name="No Results", value="Try a different page #.", inline=False)
+                    await ctx.reply(embed=embed)
 
     def autopunishment_to_text(self, point_count, point_timespan, punishment_type, punishment_duration):
         punishment_type_future_tense = {
