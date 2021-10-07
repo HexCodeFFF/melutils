@@ -187,12 +187,13 @@ class UtilityCommands(commands.Cog, name="Utility"):
         :param when: how long from now to remind you
         :param reminder: the reminder text
         """
-        scheduletime = datetime.now(tz=timezone.utc) + when
+        now = datetime.now(tz=timezone.utc)
+        scheduletime = now + when
         await scheduler.schedule(scheduletime, "message",
                                  {"channel": ctx.author.id, "message": f"Here's your reminder: {reminder}"})
-        now = datetime.now(tz=timezone.utc)
         remindertext = humanize.precisetime(scheduletime, when=now, format="%.0f")
         await ctx.reply(f"✔️ I'll remind you {remindertext}.")
+        # await ctx.reply(f"✔️ I'll remind you <t:{int(scheduletime.timestamp())}:R>.")
 
     @commands.cooldown(1, 60 * 60 * 24, BucketType.guild)
     @commands.command()
