@@ -594,10 +594,10 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                       (warn_id, ctx.guild.id)) as cur:
                     warn = await cur.fetchone()
                 if warn is None:
-                    ctx.reply(
+                    await ctx.reply(
                         f"❌ Failed to remove warning. Does warn #{warn_id} exist and is it from this server?")
                 else:
-                    cur = await db.execute("UPDATE warnings SET deactivated=0 WHERE id=?", (warn_id,))
+                    cur = await db.execute("UPDATE warnings SET deactivated=1 WHERE id=?", (warn_id,))
                     # update warns on thin ice
                     member = await ctx.guild.fetch_member(warn[0])
                     points = warn[1]
