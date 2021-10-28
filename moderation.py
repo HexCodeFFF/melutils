@@ -672,19 +672,19 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
     @commands.command(aliases=["n", "modnote"])
     @mod_only()
-    async def note(self, ctx, members: Greedy[discord.User], *, n: str):
+    async def note(self, ctx, member: discord.User, *, n: str):
         """
         Creates a note for a user which shows up in the user's modlogs.
 
         :param ctx: discord context
-        :param members: the member(s) to make a note for
+        :param member: the member to make a note for
         :param n: the note to make for the member
         """
-        for member in members:
-            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+
+        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
                                 f"created a note for {member.mention} (`{member}`): "
                                 f"`{discord.utils.escape_mentions(n)}`", ctx.guild.id, member.id, ctx.author.id)
-            await ctx.reply(f"✅ Created note for {member.mention}")
+        await ctx.reply(f"✅ Created note for {member.mention}")
 
     @commands.command(aliases=["ow", "transferwarn"])
     @mod_only()
