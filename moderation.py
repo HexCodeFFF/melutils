@@ -277,9 +277,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
             except (discord.Forbidden, discord.HTTPException, AttributeError):
                 logger.debug("pass")
 
-    # delete unmute events if someone removed the role manually with discord
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
+        # delete unmute events if someone removed the role manually with discord
         muted_role = await get_muted_role(after.guild)
         if muted_role in before.roles and muted_role not in after.roles:  # if muted role manually removed
             actuallycancelledanytasks = False
@@ -292,6 +292,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                         actuallycancelledanytasks = True
             if actuallycancelledanytasks:
                 await after.send(f"You were manually unmuted in **{after.guild.name}**.")
+        # remove thin ice from records if manually removed
         async with aiosqlite.connect("database.sqlite") as db:
             async with db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?",
                                   (after.guild.id,)) as cur:
@@ -532,7 +533,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                       (ctx.guild.id, member.id, "unmute")) as cur:
                     async for row in cur:
                         await scheduler.canceltask(row[0], db)
-                        await member.remove_roles(muted_role)
+                await member.remove_roles(muted_role)
 
                 await ctx.reply(f"✔️ Unmuted {member.mention}")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
@@ -669,6 +670,22 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 logger.debug("pass;" + str(e))
             await on_warn(member, points)  # this handles autopunishments
 
+    @commands.command(aliases=["n", "modnote"])
+    @mod_only()
+    async def note(self, ctx, members: Greedy[discord.Member], *, n: str):
+        """
+        Creates a note for a user which shows up in the user's modlogs.
+
+        :param ctx: discord context
+        :param members: the member(s) to make a note for
+        :param n: the note to make for the member
+        """
+        for member in members:
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                                f"created a note for {member.mention} (`{member}`): "
+                                f"`{discord.utils.escape_mentions(n)}`", ctx.guild.id, member.id, ctx.author.id)
+            await ctx.reply(f"✅ Created note for {member.mention}")
+
     @commands.command(aliases=["ow", "transferwarn"])
     @mod_only()
     async def oldwarn(self, ctx, member: discord.Member, day: int, month: int, year: int,
@@ -755,7 +772,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                     points = (await cur.fetchone())[0]
                     if points is None:
                         points = 0
-                embed.description += f" has {'%g' % points} point{'' if warncount == 1 else 's'}, " \
+                embed.description += f" has {'%g' % points} point{'' if points == 1 else 's'}, " \
                                      f"{warncount} warn{'' if warncount == 1 else 's'} and " \
                                      f"{delwarncount} deleted warn{'' if delwarncount == 1 else 's'}"
                 if not embed.fields:
