@@ -672,7 +672,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
     @commands.command(aliases=["n", "modnote"])
     @mod_only()
-    async def note(self, ctx, members: Greedy[discord.Member], *, n: str):
+    async def note(self, ctx, members: Greedy[discord.User], *, n: str):
         """
         Creates a note for a user which shows up in the user's modlogs.
 
