@@ -118,7 +118,8 @@ class UtilityCommands(commands.Cog, name="Utility"):
     # @commands.cooldown(1, 60 * 60 * 24 * 7, BucketType.channel)
     @commands.is_owner()
     @commands.command()
-    async def clonechannel(self, ctx, target: discord.TextChannel, destination: discord.TextChannel):
+    async def clonechannel(self, ctx, target: typing.Union[discord.TextChannel, discord.Thread],
+                           destination: typing.Union[discord.TextChannel, discord.Thread]):
         """
         clones the content of one discord channel to another
         :param ctx: discord context
