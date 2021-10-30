@@ -136,6 +136,10 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar.url)
                     embed.timestamp = msg.created_at
                     embed.description = msg.content
+                    if msg.reference:
+                        if msg.reference.resolved:
+                            embed.add_field(name=f"Replying to *{msg.reference.resolved.author.display_name}*",
+                                            value=msg.reference.resolved.content)
                     await destination.send(embeds=[embed] + msg.embeds,
                                            files=await asyncio.gather(*[att.to_file() for att in msg.attachments]))
                     count += 1
