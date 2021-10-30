@@ -115,6 +115,35 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 count += 1
             await ctx.reply(f"There are {count} messages in {channel.mention}.")
 
+    # @commands.cooldown(1, 60 * 60 * 24 * 7, BucketType.channel)
+    @commands.is_owner()
+    @commands.command()
+    async def clonechannel(self, ctx, target: discord.TextChannel, destination: discord.TextChannel):
+        """
+        clones the content of one discord channel to another
+        :param ctx: discord context
+        :param target: the channel to clone
+        :param destination: the channel to clone to
+        """
+        async with ctx.channel.typing():
+            await destination.send(f"Cloning messages from {target.mention}")
+            count = 0
+            async for msg in target.history(limit=None, oldest_first=True):
+
+                try:
+                    embed = discord.Embed()
+                    embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar.url)
+                    embed.timestamp = msg.created_at
+                    embed.description = msg.content
+                    await destination.send(embeds=[embed] + msg.embeds,
+                                           files=await asyncio.gather(*[att.to_file() for att in msg.attachments]))
+                    count += 1
+                except Exception as e:
+                    await destination.send(f"Failed to clone message {msg.id}\n```{e}```")
+                    logger.error(f"Failed to clone message {msg.id}")
+                    logger.error(e, exc_info=(type(e), e, e.__traceback__))
+            await destination.send(f"Cloned {count} message(s) from {target.mention}")
+
     @commands.cooldown(1, 60 * 60, BucketType.channel)
     @commands.command()
     async def mediacount(self, ctx, channel: discord.TextChannel = None):
