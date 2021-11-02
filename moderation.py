@@ -1,4 +1,6 @@
 import asyncio
+import copy
+import re
 import typing
 from datetime import datetime, timedelta, timezone
 
@@ -195,6 +197,52 @@ async def on_warn(member: discord.Member, issued_points: float):
                     f"{member.mention} (`{member}`) has been automatically {punishment_type_future_tense[punishment[2]]}"
                     f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
                     member.guild.id, member.id)
+
+
+def add_long_field(embed: discord.Embed, name: str, value: str, inline: bool = False,
+                   erroriftoolong: bool = False) -> discord.Embed:
+    """
+    add fields every 1024 characters to a discord embed
+    :param inline: inline of embed
+    :param embed: embed
+    :param name: title of embed
+    :param value: long value
+    :param erroriftoolong: if true, throws an error if embed exceeds 6000 in length
+    :return: updated embed
+    """
+    if len(value) <= 1024:
+        return embed.add_field(name=name, value=value, inline=inline)
+    else:
+        for i, section in enumerate(re.finditer('.{1,1024}', value, flags=re.S)):  # split every 1024 chars
+            embed.add_field(name=name + f" {i + 1}", value=section[0], inline=inline)
+    if len(embed) > 6000 and erroriftoolong:
+        raise Exception(f"Generated embed exceeds maximum size. ({len(embed)} > 6000)")
+    return embed
+
+
+def split_embed(embed: discord.Embed) -> typing.List[discord.Embed]:
+    """
+    splits one embed into one or more embeds to avoid hitting the 6000 char limit
+    :param embed: the initial embed
+    :return: a list of embeds, none of which should have more than 25 fields or more than 6000 chars
+    """
+    out = []
+    baseembed = copy.deepcopy(embed)
+    baseembed.clear_fields()
+    if len(baseembed) > 6000:
+        raise Exception(f"Embed without fields exceeds 6000 chars.")
+    currentembed = copy.deepcopy(baseembed)
+    for field in embed.fields:  # for every field in the embed
+        currentembed.add_field(name=field.name, value=field.value,
+                               inline=field.inline)  # add it to the "currentembed" object we are working on
+        if len(currentembed) > 6000 or len(currentembed.fields) > 25:  # if the currentembed object is too big
+            currentembed.remove_field(-1)  # remove the field
+            out.append(currentembed)  # add the embed to our output
+            currentembed = copy.deepcopy(baseembed)  # make a new embed
+            currentembed.add_field(name=field.name, value=field.value,
+                                   inline=field.inline)  # add the field to our new embed instead
+    out.append(currentembed)  # add the final embed which didnt exceed 6000 to the output
+    return out
 
 
 class ModerationCog(commands.Cog, name="Moderation"):
@@ -682,8 +730,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
 
         await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
-                                f"created a note for {member.mention} (`{member}`): "
-                                f"`{discord.utils.escape_mentions(n)}`", ctx.guild.id, member.id, ctx.author.id)
+                            f"created a note for {member.mention} (`{member}`): "
+                            f"`{discord.utils.escape_mentions(n)}`", ctx.guild.id, member.id, ctx.author.id)
         await ctx.reply(f"✅ Created note for {member.mention}")
 
     @commands.command(aliases=["ow", "transferwarn"])
@@ -754,13 +802,14 @@ class ModerationCog(commands.Cog, name="Moderation"):
                         issuedat = warn[2]
                         reason = warn[3]
                         points = warn[5]
-                        embed.add_field(name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
-                                             f"{' (Deleted)' if warn[4] else ''}",
-                                        value=
-                                        f"Reason: {reason}\n"
-                                        f"Issued by: {issuedby.mention}\n"
-                                        f"Issued <t:{int(issuedat)}:f> "
-                                        f"(<t:{int(issuedat)}:R>)", inline=False)
+                        add_long_field(embed,
+                                       name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
+                                            f"{' (Deleted)' if warn[4] else ''}",
+                                       value=
+                                       f"Reason: {reason}\n"
+                                       f"Issued by: {issuedby.mention}\n"
+                                       f"Issued <t:{int(issuedat)}:f> "
+                                       f"(<t:{int(issuedat)}:R>)", inline=False)
                 async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
                                       (member.id, ctx.guild.id)) as cur:
                     warncount = (await cur.fetchone())[0]
@@ -778,7 +827,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 if not embed.fields:
                     embed.add_field(name="No Results", value="Try a different page # or show deleted warns.",
                                     inline=False)
-            await ctx.reply(embed=embed)
+            for e in split_embed(embed):
+                await ctx.reply(embed=e)
 
     @commands.command(aliases=["moderatorlogs", "modlog", "logs"])
     @mod_only()
@@ -788,7 +838,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
         :param ctx: discord context
         :param member: the member to see the modlogs of.
-        :param page: if the user has more than 25 modlogs, this will let you see pages of modlogs.
+        :param page: if the user has more than 10 modlogs, this will let you see pages of modlogs.
         :param viewmodactions: set to yes to view the actions the user took as moderator instead of actions taken
         against them.
         :returns: list of actions taken against them
@@ -800,8 +850,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
             async with aiosqlite.connect("database.sqlite") as db:
                 async with db.execute(f"SELECT text,datetime,user,moderator FROM modlog "
                                       f"WHERE {'moderator' if viewmodactions else 'user'}=? AND guild=? "
-                                      f"ORDER BY datetime DESC LIMIT 25 OFFSET ?",
-                                      (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
+                                      f"ORDER BY datetime DESC LIMIT 10 OFFSET ?",
+                                      (member.id, ctx.guild.id, (page - 1) * 10)) as cursor:
                     now = datetime.now(tz=timezone.utc)
                     async for log in cursor:
                         if log[2]:
@@ -814,15 +864,16 @@ class ModerationCog(commands.Cog, name="Moderation"):
                             moderator = None
                         issuedat = log[1]
                         text = log[0]
-                        embed.add_field(
-                            name=f"<t:{int(issuedat)}:f> (<t:{int(issuedat)}:R>)",
-                            value=
-                            text + ("\n\n" if user or moderator else "") +
-                            (f"**User**: {user.mention}\n" if user else "") +
-                            (f"**Moderator**: {moderator.mention}\n" if moderator else ""), inline=False)
+                        add_long_field(embed,
+                                       name=f"<t:{int(issuedat)}:f> (<t:{int(issuedat)}:R>)",
+                                       value=
+                                       text + ("\n\n" if user or moderator else "") +
+                                       (f"**User**: {user.mention}\n" if user else "") +
+                                       (f"**Moderator**: {moderator.mention}\n" if moderator else ""), inline=False)
                     if not embed.fields:
                         embed.add_field(name="No Results", value="Try a different page #.", inline=False)
-                    await ctx.reply(embed=embed)
+                    for e in split_embed(embed):
+                        await ctx.reply(embed=e)
 
     def autopunishment_to_text(self, point_count, point_timespan, punishment_type, punishment_duration):
         punishment_type_future_tense = {
