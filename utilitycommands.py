@@ -443,6 +443,24 @@ class UtilityCommands(commands.Cog, name="Utility"):
         msgs = await asyncio.gather(*[ctx.send(stickers=[sticker]) for sticker in ctx.guild.stickers])
         await asyncio.gather(*[message.add_reaction("✅") for message in msgs])
 
+    @commands.command()
+    async def id(self, ctx: commands.Context,
+                 obj: typing.Optional[typing.Union[discord.abc.GuildChannel, discord.User, discord.Guild,
+                                                   discord.Thread, discord.PartialEmoji, discord.Role,
+                                                   discord.Object]] = None):
+        """
+        gets the ID of a discord object
+        :param ctx: discord context
+        :param obj: a user, emoji, channel, guild, or role. will default to the author if not specified
+        :return: the ID of the object.
+        """
+        if obj is None:
+            obj = ctx.author
+        if hasattr(obj, "mention"):
+            await ctx.reply(f"{obj.mention}'s ID is `{obj.id}`", allowed_mentions=discord.AllowedMentions.none())
+        else:
+            await ctx.reply(f"{str(obj)}'s ID is `{obj.id}`", allowed_mentions=discord.AllowedMentions.none())
+
 
 '''
 Steps to convert:
