@@ -482,7 +482,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
                                 f"ban appeal link to {ban_appeal_link}", ctx.guild.id, modid=ctx.author.id)
 
-    @commands.command(aliases=["b"])
+    @commands.command(aliases=["b", "eat", "vore"])
     @commands.bot_has_permissions(ban_members=True)
     @mod_only()
     async def ban(self, ctx, members: Greedy[discord.User],
@@ -683,7 +683,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
         else:
             await ctx.reply(f"❌ Failed to unremove warning. Does warn #{warn_id} exist and is it from this server?")
 
-    @commands.command(aliases=["w"])
+    @commands.command(aliases=["w", "bite"])
     @mod_only()
     async def warn(self, ctx, members: Greedy[discord.Member], points: typing.Optional[float] = 1, *,
                    reason="No reason provided."):
