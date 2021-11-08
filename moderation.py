@@ -355,9 +355,14 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                           (after.guild.id, after.id, "un_thin_ice")) as cur:
                         async for row in cur:
                             await scheduler.canceltask(row[0], db)
+                            await db.execute("DELETE FROM thin_ice WHERE guild=? and user=?",
+                                             (after.guild.id, after.id))
                             actuallycancelledanytasks = True
+                        await db.commit()
                     if actuallycancelledanytasks:
                         await after.send(f"Your thin ice was manually removed in **{after.guild.name}**.")
+                        await modlog.modlog(f"{after.mention} (`{after}`)'s thin ice was manually removed.",
+                                            guildid=after.guild.id, userid=after.id)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
