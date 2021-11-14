@@ -2,10 +2,12 @@ import asyncio
 import functools
 import io
 import random
+import typing
 
 import aiohttp
 import discord
 import twitter
+from PIL import Image
 from discord.ext import commands
 
 import config
@@ -21,12 +23,27 @@ def run_in_executor(f):
     return inner
 
 
+async def saveurl(url) -> bytes:
+    """
+    save a url to bytes
+    :param url: web url of a file
+    :return: bytes of result
+    """
+    async with aiohttp.ClientSession(headers={'Connection': 'keep-alive'}) as session:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                return await resp.read()
+            else:
+                resp.raise_for_status()
+
+
 class FunnyBanner(commands.Cog, name="Funny Banner"):
     """
     send an image from @awesomepapers or set it as a banner
     """
+
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: commands.Bot = bot
         self.api = twitter.Api(
             consumer_key=config.twitter_api_key,
             consumer_secret=config.twitter_api_secret,
@@ -90,7 +107,66 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                         raise Exception(f"status {resp.status}")
             await ctx.guild.edit(banner=bytes(url_bytes))
             await ctx.reply(f"✔️ Set guild banner to {banner_url}")
+
+    def msgscore(self, msg: discord.Message):
+        return discord.utils.get(msg.reactions, emoji__id=830090068961656852).count - \
+               discord.utils.get(msg.reactions, emoji__id=830090093788004352).count
+
+    async def resize_url(self, url: str) -> typing.Optional[bytes]:
+        logger.debug(f"trying {url}")
+        try:
+            urlbytes = await saveurl(url)
+            image: Image.Image = Image.open(io.BytesIO(urlbytes))
+            image = image.resize((1920, 1080), Image.BICUBIC)
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='PNG')
+            return img_byte_arr.getvalue()
+        except Exception as e:
+            logger.error(e, exc_info=(type(e), e, e.__traceback__))
+            return None
+
     # command here
+    @commands.command()
+    @commands.is_owner()
+    async def topbanner(self, ctx: commands.Context):
+        async with ctx.typing():
+            server = self.bot.get_guild(829973626442088468)
+            channel = server.get_channel(908859472288551015)
+            # upvote = discord.utils.get(server.emojis, id=830090068961656852)
+            # downvote = discord.utils.get(server.emojis, id=830090093788004352)
+            resizedimage = None
+            bannermessage = None
+            # go through every message in the channel in decreasing order of calculated score
+            msgs = await channel.history(limit=None).flatten()
+            if not msgs:
+                await ctx.reply("No messages in configured channel!")
+                return
+            msgs.sort(key=self.msgscore, reverse=True)
+            for msg in msgs:
+                msgscore = self.msgscore(msg)
+                if msgscore <= 0:
+                    continue
+                # go through every attachment and embed, try to resize it to 16:9
+                # if this succeeds its a valid image (errors are caught and return None), return from the loop
+                if msg.attachments:
+                    for att in msg.attachments:
+                        resizedimage = await self.resize_url(att.url)
+                        if resizedimage is not None:
+                            break
+                elif msg.embeds:
+                    for embed in msg.embeds:
+                        if embed.image != discord.Embed.Empty:
+                            resizedimage = await self.resize_url(embed.image.url)
+                            if resizedimage is not None:
+                                break
+                if resizedimage is not None:
+                    bannermessage = msg
+                    break
+            if resizedimage is not None:  # we found a suitable banner
+                await server.edit(banner=resizedimage)
+                await ctx.reply(f"{bannermessage.author}'s banner was chosen with a score of **{msgscore}**!",
+                                file=discord.File(io.BytesIO(resizedimage), filename="banner.png"))
+                await bannermessage.delete()
 
 
 '''

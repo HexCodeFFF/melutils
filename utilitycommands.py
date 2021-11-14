@@ -23,13 +23,6 @@ from clogs import logger
 from timeconverter import TimeConverter
 
 
-async def fetch(session, url):
-    async with session.get(url) as response:
-        if response.status != 200:
-            response.raise_for_status()
-        return await response.read()
-
-
 async def fetch_all(session, urls):
     tasks = []
     for url in urls:
@@ -37,24 +30,6 @@ async def fetch_all(session, urls):
         tasks.append(task)
     results = await asyncio.gather(*tasks)
     return results
-
-
-def get_random_string(length):
-    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
-
-
-def is_named_used(name):
-    return os.path.exists(name)
-
-
-def temp_file_name(extension="png", tempdir="temp/"):
-    while True:
-        if extension is not None:
-            name = f"{tempdir}{get_random_string(8)}.{extension}"
-        else:
-            name = f"{tempdir}{get_random_string(8)}"
-        if not is_named_used(name):
-            return name
 
 
 async def saveurl(url) -> bytes:
@@ -469,3 +444,28 @@ Steps to convert:
 function(ctx): -> function(self, ctx)
 bot -> self.bot
 '''
+
+
+async def fetch(session, url):
+    async with session.get(url) as response:
+        if response.status != 200:
+            response.raise_for_status()
+        return await response.read()
+
+
+def temp_file_name(extension="png", tempdir="temp/"):
+    while True:
+        if extension is not None:
+            name = f"{tempdir}{get_random_string(8)}.{extension}"
+        else:
+            name = f"{tempdir}{get_random_string(8)}"
+        if not is_named_used(name):
+            return name
+
+
+def get_random_string(length):
+    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
+
+
+def is_named_used(name):
+    return os.path.exists(name)
