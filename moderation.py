@@ -314,6 +314,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 tz=timezone.utc).timestamp() < 1637366400:
             await ban_action(user, guild, None,
                              reason="Due to threats of a raid, all permanent unbans are disabled for now.")
+            await modlog.modlog(f"{user.mention} ({user}) was re-banned. Due to threats of a raid, all permanent unbans"
+                                f" are disabled for now.", guildid=829973626442088468, userid=user.id,
+                                modid=self.bot.user.id)
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
