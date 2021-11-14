@@ -164,7 +164,7 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                     break
             if resizedimage is not None:  # we found a suitable banner
                 await server.edit(banner=resizedimage)
-                await ctx.reply(f"{bannermessage.author}'s banner was chosen with a score of **{msgscore}**!",
+                await ctx.reply(f"{bannermessage.author.mention}'s banner was chosen with a score of **{msgscore}**!",
                                 file=discord.File(io.BytesIO(resizedimage), filename="banner.png"))
                 await bannermessage.delete()
 
