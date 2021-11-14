@@ -309,6 +309,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
         except (discord.Forbidden, discord.HTTPException, AttributeError, discord.NotFound):
             logger.debug("pass")
 
+        # TEMPORARY SHIT TODO: DELETE
+        if guild.id == 829973626442088468 and not actuallycancelledanytasks and datetime.now(
+                tz=timezone.utc).timestamp() < 1637366400:
+            await ban_action(user, guild, None,
+                             reason="Due to threats of a raid, all permanent unbans are disabled for now.")
+
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         async with aiosqlite.connect("database.sqlite") as db:
@@ -346,9 +352,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                   (after.guild.id,)) as cur:
                 thin_ice_role = await cur.fetchone()
             if thin_ice_role is not None and thin_ice_role[0] is not None:
-                if thin_ice_role[0] in [role.id for role in before.roles] and thin_ice_role[0] not in [role.id for role
-                                                                                                       in
-                                                                                                       after.roles]:  # if muted role manually removed
+                if thin_ice_role[0] in [role.id for role in before.roles] \
+                        and thin_ice_role[0] not in [role.id for role in after.roles]:  # if muted role manually removed
                     actuallycancelledanytasks = False
                     async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
                                           "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
