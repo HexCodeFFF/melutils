@@ -37,6 +37,20 @@ async def saveurl(url) -> bytes:
                 resp.raise_for_status()
 
 
+async def resize_url(url: str) -> typing.Optional[bytes]:
+    logger.debug(f"trying {url}")
+    try:
+        urlbytes = await saveurl(url)
+        image: Image.Image = Image.open(io.BytesIO(urlbytes))
+        image = image.resize((1920, 1080), Image.BICUBIC)
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='PNG')
+        return img_byte_arr.getvalue()
+    except Exception as e:
+        logger.error(e, exc_info=(type(e), e, e.__traceback__))
+        return None
+
+
 class FunnyBanner(commands.Cog, name="Funny Banner"):
     """
     send an image from @awesomepapers or set it as a banner
@@ -109,21 +123,10 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
             await ctx.reply(f"✔️ Set guild banner to {banner_url}")
 
     def msgscore(self, msg: discord.Message):
-        return discord.utils.get(msg.reactions, emoji__id=830090068961656852).count - \
-               discord.utils.get(msg.reactions, emoji__id=830090093788004352).count
-
-    async def resize_url(self, url: str) -> typing.Optional[bytes]:
-        logger.debug(f"trying {url}")
-        try:
-            urlbytes = await saveurl(url)
-            image: Image.Image = Image.open(io.BytesIO(urlbytes))
-            image = image.resize((1920, 1080), Image.BICUBIC)
-            img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format='PNG')
-            return img_byte_arr.getvalue()
-        except Exception as e:
-            logger.error(e, exc_info=(type(e), e, e.__traceback__))
-            return None
+        upvote_reactions = discord.utils.get(msg.reactions, emoji__id=830090068961656852)
+        downvote_reactions = discord.utils.get(msg.reactions, emoji__id=830090093788004352)
+        return (0 if upvote_reactions is None else upvote_reactions.count) - \
+               (0 if downvote_reactions is None else downvote_reactions.count)
 
     # command here
     @commands.command()
@@ -150,13 +153,13 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                 # if this succeeds its a valid image (errors are caught and return None), return from the loop
                 if msg.attachments:
                     for att in msg.attachments:
-                        resizedimage = await self.resize_url(att.url)
+                        resizedimage = await resize_url(att.url)
                         if resizedimage is not None:
                             break
                 elif msg.embeds:
                     for embed in msg.embeds:
                         if embed.image != discord.Embed.Empty:
-                            resizedimage = await self.resize_url(embed.image.url)
+                            resizedimage = await resize_url(embed.image.url)
                             if resizedimage is not None:
                                 break
                 if resizedimage is not None:
