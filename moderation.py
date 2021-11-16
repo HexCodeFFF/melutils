@@ -652,14 +652,15 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await ctx.reply(f"❌ Specify a warn ID.")
         for warn_id in warn_ids:
             async with aiosqlite.connect("database.sqlite") as db:
-                async with db.execute("SELECT user, points FROM warnings WHERE id=? AND server=? AND deactivated=0",
-                                      (warn_id, ctx.guild.id)) as cur:
+                async with db.execute(
+                        "SELECT user, points, reason FROM warnings WHERE id=? AND server=? AND deactivated=0",
+                        (warn_id, ctx.guild.id)) as cur:
                     warn = await cur.fetchone()
                 if warn is None:
                     await ctx.reply(
                         f"❌ Failed to remove warning. Does warn #{warn_id} exist and is it from this server?")
                 else:
-                    cur = await db.execute("UPDATE warnings SET deactivated=1 WHERE id=?", (warn_id,))
+                    await db.execute("UPDATE warnings SET deactivated=1 WHERE id=?", (warn_id,))
                     # update warns on thin ice
                     member = await ctx.guild.fetch_member(warn[0])
                     points = warn[1]
@@ -672,9 +673,17 @@ class ModerationCog(commands.Cog, name="Moderation"):
                             "UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice-? WHERE guild=? AND user=?",
                             (points, member.guild.id, member.id))
                     await db.commit()
-                    await ctx.reply(f"✔️ Removed warning #{warn_id}")
-                    await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
-                                        f"removed warning #{warn_id}", ctx.guild.id, modid=ctx.author.id)
+                    user = await self.bot.fetch_user(warn[0])
+                    if user:
+                        await ctx.reply(f"✔️ Removed warning #{warn_id} from {user.mention} (`{warn[2]}`)")
+                        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
+                                            f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
+                                            modid=ctx.author.id, userid=user.id)
+                    else:
+                        await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
+                        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
+                                            f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
+                                            modid=ctx.author.id, userid=user.id)
 
     @commands.command(aliases=["restorewarn", "undeletewarn", "udw"])
     @mod_only()

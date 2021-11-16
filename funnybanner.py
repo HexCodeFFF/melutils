@@ -122,7 +122,8 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
             await ctx.guild.edit(banner=bytes(url_bytes))
             await ctx.reply(f"✔️ Set guild banner to {banner_url}")
 
-    def msgscore(self, msg: discord.Message):
+    @staticmethod
+    def msgscore(msg: discord.Message):
         upvote_reactions = discord.utils.get(msg.reactions, emoji__id=830090068961656852)
         downvote_reactions = discord.utils.get(msg.reactions, emoji__id=830090093788004352)
         return (0 if upvote_reactions is None else upvote_reactions.count) - \
