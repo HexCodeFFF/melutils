@@ -105,6 +105,6 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
                         await db.execute("DELETE FROM auto_reactions WHERE channel=? AND emoji=?", (emid[1], emid[2]))
                         await db.commit()
                         await modlog(f"Removed autoreaction rule from {message.channel.mention} because emoji with id "
-                                     f"`{emid[2]}` no longer exists.", message.guild.id)
+                                     f"`{emid[2]}` no longer exists.", message.guild.id,db=db)
                     else:
                         asyncio.create_task(message.add_reaction(emoji))

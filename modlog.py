@@ -15,13 +15,18 @@ class ModLogInitCog(commands.Cog):
         self.bot = bot
 
 
-async def modlog(msg: str, guildid: int, userid: typing.Union[int, None] = None, modid: typing.Union[int, None] = None):
-    async with aiosqlite.connect("database.sqlite") as db:
-        await db.execute("INSERT INTO modlog(guild,user,moderator,text,datetime) VALUES (?,?,?,?,?)",
-                         (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
-        await db.commit()
-        async with db.execute("SELECT log_channel FROM server_config WHERE guild=?", (guildid,)) as cur:
-            modlogchannel = await cur.fetchone()
+async def modlog(msg: str, guildid: int, userid: typing.Optional[int] = None, modid: typing.Optional[int] = None,
+                 db=typing.Optional[aiosqlite.Connection]):
+    passeddb = db is not None
+    if not db:  # if not passed DB conn, make new one. nested db connections have issues commiting.
+        db = aiosqlite.connect("database.sqlite")
+    await db.execute("INSERT INTO modlog(guild,user,moderator,text,datetime) VALUES (?,?,?,?,?)",
+                     (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
+    await db.commit()
+    async with db.execute("SELECT log_channel FROM server_config WHERE guild=?", (guildid,)) as cur:
+        modlogchannel = await cur.fetchone()
+    if not passeddb:
+        await db.close()
     if modlogchannel is None or modlogchannel[0] is None:
         return
     modlogchannel = modlogchannel[0]

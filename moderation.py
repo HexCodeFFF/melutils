@@ -154,7 +154,7 @@ async def on_warn(member: discord.Member, issued_points: float):
                                                              f" points on thin ice.")
                 await modlog.modlog(f"{member.mention} (`{member}`) was automatically "
                                     f"banned for receiving more than {threshold} "
-                                    f"points on thin ice.", member.guild.id, member.id)
+                                    f"points on thin ice.", member.guild.id, member.id,db=db)
                 await db.execute("UPDATE thin_ice SET warns_on_thin_ice = 0 WHERE guild=? AND user=?",
                                  (member.guild.id, member.id))
                 await db.commit()
@@ -196,7 +196,7 @@ async def on_warn(member: discord.Member, issued_points: float):
                 await modlog.modlog(
                     f"{member.mention} (`{member}`) has been automatically {punishment_type_future_tense[punishment[2]]}"
                     f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
-                    member.guild.id, member.id)
+                    member.guild.id, member.id,db=db)
 
 
 def add_long_field(embed: discord.Embed, name: str, value: str, inline: bool = False,
@@ -370,7 +370,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                     if actuallycancelledanytasks:
                         await after.send(f"Your thin ice was manually removed in **{after.guild.name}**.")
                         await modlog.modlog(f"{after.mention} (`{after}`)'s thin ice was manually removed.",
-                                            guildid=after.guild.id, userid=after.id)
+                                            guildid=after.guild.id, userid=after.id, db=db)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -598,7 +598,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
                 await ctx.reply(f"✔️ Unmuted {member.mention}")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
-                                    f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id)
+                                    f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id, db=db)
                 try:
                     await member.send(f"You were manually unmuted in **{ctx.guild.name}**.")
                 except (discord.Forbidden, discord.HTTPException, AttributeError):
@@ -628,7 +628,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 await ctx.reply(f"✔️ Unbanned {member.mention}")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
                                     f"unbanned {member.mention} (`{member}`)",
-                                    ctx.guild.id, member.id, ctx.author.id)
+                                    ctx.guild.id, member.id, ctx.author.id, db=db)
                 try:
                     await member.send(f"You were manually unbanned in **{ctx.guild.name}**.")
                 except (discord.Forbidden, discord.HTTPException, AttributeError):
@@ -678,12 +678,17 @@ class ModerationCog(commands.Cog, name="Moderation"):
                         await ctx.reply(f"✔️ Removed warning #{warn_id} from {user.mention} (`{warn[2]}`)")
                         await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
                                             f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
-                                            modid=ctx.author.id, userid=user.id)
+                                            modid=ctx.author.id, userid=user.id, db=db)
+                        try:
+                            await user.send(f"A warn you received in {ctx.guild.name} for was deleted. "
+                                            f"(`{discord.utils.escape_mentions(warn[2])}`)")
+                        except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
+                            logger.debug("pass;" + str(e))
                     else:
                         await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
                         await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
                                             f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
-                                            modid=ctx.author.id, userid=user.id)
+                                            modid=ctx.author.id, userid=user.id, db=db)
 
     @commands.command(aliases=["restorewarn", "undeletewarn", "udw"])
     @mod_only()
@@ -695,15 +700,32 @@ class ModerationCog(commands.Cog, name="Moderation"):
         :param warn_id: a warn ID to restore. get the ID of a warn with m.warns.
         """
         async with aiosqlite.connect("database.sqlite") as db:
-            cur = await db.execute("UPDATE warnings SET deactivated=0 WHERE id=? AND server=? AND deactivated=1",
-                                   (warn_id, ctx.guild.id))
-            await db.commit()
-        if cur.rowcount > 0:
-            await ctx.reply(f"✔️ Restored warning #{warn_id}")
-            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
-                                f"restored warning #{warn_id}", ctx.guild.id, modid=ctx.author.id)
-        else:
-            await ctx.reply(f"❌ Failed to unremove warning. Does warn #{warn_id} exist and is it from this server?")
+            async with db.execute(
+                    "SELECT user, points, reason FROM warnings WHERE id=? AND server=? AND deactivated=0",
+                    (warn_id, ctx.guild.id)) as cur:
+                warn = await cur.fetchone()
+            if warn is None:
+                await ctx.reply(
+                    f"❌ Failed to unremove warning. Does warn #{warn_id} exist and is it from this server?")
+            else:
+                await db.execute("UPDATE warnings SET deactivated=1 WHERE id=?", (warn_id,))
+                await db.commit()
+                user = await self.bot.fetch_user(warn[0])
+                if user:
+                    await ctx.reply(f"✔️ Restored warning #{warn_id} from {user.mention} (`{warn[2]}`)")
+                    await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) restored warning #{warn_id} from "
+                                        f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
+                                        modid=ctx.author.id, userid=user.id, db=db)
+                    try:
+                        await user.send(f"A previously deleted warn you received in {ctx.guild.name} was restored. "
+                                        f"(`{discord.utils.escape_mentions(warn[2])}`)")
+                    except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
+                        logger.debug("pass;" + str(e))
+                else:
+                    await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
+                    await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
+                                        f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
+                                        modid=ctx.author.id, userid=user.id, db=db)
 
     @commands.command(aliases=["w", "bite"])
     @mod_only()

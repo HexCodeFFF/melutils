@@ -8,7 +8,7 @@ from modlog import modlog
 
 class WordFilterCog(commands.Cog, name="Word Filter"):
     """
-    Moderation commands for auto-deleting certian words.
+    Moderation commands for auto-deleting certain words.
     """
     def __init__(self, bot):
         self.bot = bot
