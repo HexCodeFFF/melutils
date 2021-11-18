@@ -154,7 +154,7 @@ async def on_warn(member: discord.Member, issued_points: float):
                                                              f" points on thin ice.")
                 await modlog.modlog(f"{member.mention} (`{member}`) was automatically "
                                     f"banned for receiving more than {threshold} "
-                                    f"points on thin ice.", member.guild.id, member.id,db=db)
+                                    f"points on thin ice.", member.guild.id, member.id, db=db)
                 await db.execute("UPDATE thin_ice SET warns_on_thin_ice = 0 WHERE guild=? AND user=?",
                                  (member.guild.id, member.id))
                 await db.commit()
@@ -196,7 +196,7 @@ async def on_warn(member: discord.Member, issued_points: float):
                 await modlog.modlog(
                     f"{member.mention} (`{member}`) has been automatically {punishment_type_future_tense[punishment[2]]}"
                     f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
-                    member.guild.id, member.id,db=db)
+                    member.guild.id, member.id, db=db)
 
 
 def add_long_field(embed: discord.Embed, name: str, value: str, inline: bool = False,

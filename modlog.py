@@ -16,9 +16,9 @@ class ModLogInitCog(commands.Cog):
 
 
 async def modlog(msg: str, guildid: int, userid: typing.Optional[int] = None, modid: typing.Optional[int] = None,
-                 db=typing.Optional[aiosqlite.Connection]):
+                 db: typing.Optional[aiosqlite.Connection] = None):
     passeddb = db is not None
-    if not db:  # if not passed DB conn, make new one. nested db connections have issues commiting.
+    if not passeddb:  # if not passed DB conn, make new one. nested db connections have issues commiting.
         db = await aiosqlite.connect("database.sqlite")
     await db.execute("INSERT INTO modlog(guild,user,moderator,text,datetime) VALUES (?,?,?,?,?)",
                      (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
