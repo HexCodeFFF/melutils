@@ -19,7 +19,7 @@ async def modlog(msg: str, guildid: int, userid: typing.Optional[int] = None, mo
                  db=typing.Optional[aiosqlite.Connection]):
     passeddb = db is not None
     if not db:  # if not passed DB conn, make new one. nested db connections have issues commiting.
-        db = aiosqlite.connect("database.sqlite")
+        db = await aiosqlite.connect("database.sqlite")
     await db.execute("INSERT INTO modlog(guild,user,moderator,text,datetime) VALUES (?,?,?,?,?)",
                      (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
     await db.commit()
