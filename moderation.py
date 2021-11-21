@@ -1,6 +1,4 @@
 import asyncio
-import copy
-import re
 import typing
 from datetime import datetime, timedelta, timezone
 
@@ -13,6 +11,7 @@ from discord.ext.commands import Greedy
 import modlog
 import scheduler
 from clogs import logger
+from embedutils import add_long_field, split_embed
 from timeconverter import TimeConverter
 
 
@@ -197,52 +196,6 @@ async def on_warn(member: discord.Member, issued_points: float):
                     f"{member.mention} (`{member}`) has been automatically {punishment_type_future_tense[punishment[2]]}"
                     f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
                     member.guild.id, member.id, db=db)
-
-
-def add_long_field(embed: discord.Embed, name: str, value: str, inline: bool = False,
-                   erroriftoolong: bool = False) -> discord.Embed:
-    """
-    add fields every 1024 characters to a discord embed
-    :param inline: inline of embed
-    :param embed: embed
-    :param name: title of embed
-    :param value: long value
-    :param erroriftoolong: if true, throws an error if embed exceeds 6000 in length
-    :return: updated embed
-    """
-    if len(value) <= 1024:
-        return embed.add_field(name=name, value=value, inline=inline)
-    else:
-        for i, section in enumerate(re.finditer('.{1,1024}', value, flags=re.S)):  # split every 1024 chars
-            embed.add_field(name=name + f" {i + 1}", value=section[0], inline=inline)
-    if len(embed) > 6000 and erroriftoolong:
-        raise Exception(f"Generated embed exceeds maximum size. ({len(embed)} > 6000)")
-    return embed
-
-
-def split_embed(embed: discord.Embed) -> typing.List[discord.Embed]:
-    """
-    splits one embed into one or more embeds to avoid hitting the 6000 char limit
-    :param embed: the initial embed
-    :return: a list of embeds, none of which should have more than 25 fields or more than 6000 chars
-    """
-    out = []
-    baseembed = copy.deepcopy(embed)
-    baseembed.clear_fields()
-    if len(baseembed) > 6000:
-        raise Exception(f"Embed without fields exceeds 6000 chars.")
-    currentembed = copy.deepcopy(baseembed)
-    for field in embed.fields:  # for every field in the embed
-        currentembed.add_field(name=field.name, value=field.value,
-                               inline=field.inline)  # add it to the "currentembed" object we are working on
-        if len(currentembed) > 6000 or len(currentembed.fields) > 25:  # if the currentembed object is too big
-            currentembed.remove_field(-1)  # remove the field
-            out.append(currentembed)  # add the embed to our output
-            currentembed = copy.deepcopy(baseembed)  # make a new embed
-            currentembed.add_field(name=field.name, value=field.value,
-                                   inline=field.inline)  # add the field to our new embed instead
-    out.append(currentembed)  # add the final embed which didnt exceed 6000 to the output
-    return out
 
 
 class ModerationCog(commands.Cog, name="Moderation"):
@@ -472,6 +425,28 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await update_server_config(ctx.guild.id, "log_channel", channel.id)
             await ctx.reply(f"✔️ Set server modlog channel to **{discord.utils.escape_mentions(channel.mention)}**")
             await channel.send(f"This is the new modlog channel for {ctx.guild.name}!")
+
+    @commands.command(aliases=[])
+    @commands.has_guild_permissions(manage_guild=True)
+    @commands.guild_only()
+    async def bulklogchannel(self, ctx, *, channel: typing.Optional[discord.TextChannel] = None):
+        """
+        Sets the server "bulk log" channel.
+        All server actions will appear in the channel.
+
+        :param ctx: discord context
+        :param channel: - The bulk log channel, leave blank to remove the bulk log from this server
+        """
+        if channel is None:
+            await update_server_config(ctx.guild.id, "bulk_log_channel", None)
+            await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) removed the server bulklog channel.",
+                                ctx.guild.id, ctx.author.id)
+            await ctx.reply("✔️ Removed server bulklog channel.")
+        else:
+            await update_server_config(ctx.guild.id, "bulk_log_channel", channel.id)
+            await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) set the server bulklog channel to "
+                                f"{channel.mention} ({channel}).", ctx.guild.id, ctx.author.id)
+            await ctx.reply(f"✔️ Set server bulklog channel to **{discord.utils.escape_mentions(channel.mention)}**")
 
     @commands.command(aliases=["banappeal"])
     @commands.has_guild_permissions(manage_guild=True)

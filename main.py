@@ -10,6 +10,7 @@ import scheduler
 from admincommands import AdminCommands
 from autoreaction import AutoReactionCog
 from birthday import BirthdayCog
+from bulklog import BulkLog
 from clogs import logger
 from errhandler import ErrorHandler
 from funcommands import FunCommands
@@ -42,7 +43,7 @@ if numoftables == 0:
 
 intents = discord.Intents.default()
 intents.members = True
-activity = discord.Activity(name=f"to big gay | {config.command_prefix}help", type=discord.ActivityType.listening)
+activity = discord.Activity(name=f"you | {config.command_prefix}help", type=discord.ActivityType.watching)
 bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity,
                    intents=intents)
 bot.add_cog(ErrorHandler(bot))
@@ -59,6 +60,7 @@ bot.add_cog(AutoReactionCog(bot))
 bot.add_cog(ThreadUtilsCog(bot))
 bot.add_cog(BirthdayCog(bot))
 bot.add_cog(NitroRolesCog(bot))
+bot.add_cog(BulkLog(bot))
 
 
 def logcommand(cmd):

@@ -23,12 +23,12 @@ async def modlog(msg: str, guildid: int, userid: typing.Optional[int] = None, mo
     await db.execute("INSERT INTO modlog(guild,user,moderator,text,datetime) VALUES (?,?,?,?,?)",
                      (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
     await db.commit()
-    async with db.execute("SELECT log_channel FROM server_config WHERE guild=?", (guildid,)) as cur:
+    async with db.execute("SELECT log_channel,bulk_log_channel FROM server_config WHERE guild=?", (guildid,)) as cur:
         modlogchannel = await cur.fetchone()
     if not passeddb:
         await db.close()
     if modlogchannel is None or modlogchannel[0] is None:
         return
-    modlogchannel = modlogchannel[0]
-    channel = await botcopy.fetch_channel(modlogchannel)
-    await channel.send("**[ModLog]** " + msg, allowed_mentions=discord.AllowedMentions.none())
+    for ch in modlogchannel:  # send to normal and bulk
+        channel = await botcopy.fetch_channel(ch)
+        await channel.send("**[ModLog]** " + msg, allowed_mentions=discord.AllowedMentions.none())

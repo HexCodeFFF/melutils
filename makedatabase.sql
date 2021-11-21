@@ -25,6 +25,15 @@ create table birthdays
 	birthday int not null
 );
 
+create table booster_roles
+(
+	guild int not null,
+	user int not null,
+	role int not null,
+	constraint booster_roles_pk
+		unique (guild, user)
+);
+
 create table macros
 (
 	server int not null,
@@ -64,7 +73,10 @@ create table server_config
 	ban_appeal_link text,
 	thin_ice_role int,
 	thin_ice_threshold int default 1 not null,
-	birthday_category int
+	birthday_category int,
+	booster_roles bool default 0 not null,
+	booster_role_hoist int,
+	bulk_log_channel int
 );
 
 create table thin_ice
