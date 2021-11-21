@@ -82,7 +82,7 @@ class BulkLog(commands.Cog):
             "Content Before": before.system_content,
             "Content After": after.system_content,
             "Message ID": str(after.id),
-            "Message Jump URL": msg.jump_url
+            "Message Jump URL": after.jump_url
         }, after.guild.id, color=discord.Colour.yellow())
 
     @commands.Cog.listener()
