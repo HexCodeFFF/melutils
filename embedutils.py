@@ -17,6 +17,8 @@ def add_long_field(embed: discord.Embed, name: str, value: str, inline: bool = F
     :return: updated embed
     """
     if len(value) <= 1024:
+        if len(value) == 0:
+            value = "`No Content`"
         return embed.add_field(name=name, value=value, inline=inline)
     else:
         for i, section in enumerate(re.finditer('.{1,1024}', value, flags=re.S)):  # split every 1024 chars
