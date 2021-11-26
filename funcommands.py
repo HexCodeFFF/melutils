@@ -148,7 +148,9 @@ class FunCommands(commands.Cog, name="Fun"):
             "inter",
             "a",
             "trans",
-            "gender"
+            "gender",
+            "allo",
+            "teck"
         ]
         center = [
             "sexual",
@@ -156,7 +158,9 @@ class FunCommands(commands.Cog, name="Fun"):
             "sex",
             "binary",
             "questioning",
-            "lesbian"
+            "bian",
+            "romantic",
+            "amorous"
         ]
         suffixes = [
             "phobic",
