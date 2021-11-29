@@ -177,9 +177,9 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                         allowed_mentions=discord.AllowedMentions.none())
                 else:
                     await server.edit(banner=resizedimage)
-                await ctx.reply(f"{bannermessage.author.mention}'s banner was chosen with a score of **{msgscore}**!",
-                                file=discord.File(io.BytesIO(resizedimage), filename="banner.png"))
-                await bannermessage.delete()
+                    await ctx.reply(f"{bannermessage.author.mention}'s banner was chosen with a score of **{msgscore}**!",
+                                    file=discord.File(io.BytesIO(resizedimage), filename="banner.png"))
+                    await bannermessage.delete()
 
 
 '''
