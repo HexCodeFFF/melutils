@@ -15,6 +15,24 @@ from embedutils import add_long_field, split_embed
 from timeconverter import TimeConverter
 
 
+async def is_mod(guild: discord.Guild, user: typing.Union[discord.User, discord.Member]):
+    if not isinstance(user, discord.Member):
+        user = guild.get_member(user.id)
+    else:
+        assert user.guild == guild
+    if user.guild_permissions.manage_guild:
+        return True
+    async with aiosqlite.connect("database.sqlite") as db:
+        async with db.execute("SELECT mod_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
+            modrole = await cur.fetchone()
+    if modrole is None:
+        return False
+    modrole = modrole[0]
+    if modrole in [r.id for r in user.roles]:
+        return True
+    return False
+
+
 def mod_only():
     async def extended_check(ctx):
         if ctx.guild is None:
@@ -87,6 +105,11 @@ async def ban_action(user: typing.Union[discord.User, discord.Member], guild: di
     if user in bans:
         return False
     htime = humanize.precisedelta(ban_length)
+    if await is_mod(guild, user):
+        await modlog.modlog(f"Tried to ban {user.mention} (`{user}`) for **{htime}** with reason "
+                            f"`{discord.utils.escape_mentions(reason)}`, but they are a mod.",
+                            guild.id, user.id)
+        return False
     try:
         await guild.ban(user, reason=reason, delete_message_days=0)
         if ban_length is None:
@@ -115,6 +138,11 @@ async def mute_action(member: discord.Member, mute_length: typing.Optional[timed
     if muted_role in member.roles:
         return False
     htime = humanize.precisedelta(mute_length)
+    if await is_mod(member.guild, member):
+        await modlog.modlog(f"Tried to mute {member.mention} (`{member}`) for **{htime}** with reason "
+                            f"`{discord.utils.escape_mentions(reason)}`, but they are a mod.",
+                            member.guild.id, member.id)
+        return False
     await member.add_roles(muted_role, reason=reason)
     if mute_length is None:
         try:
@@ -491,7 +519,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
         for member in members:
             result = await ban_action(member, ctx.guild, ban_length, reason)
             if not result:
-                await ctx.reply(f"❌ {member.mention} is already banned!")
+                await ctx.reply(f"❌ Failed to ban {member.mention}. Are they already banned or a mod?")
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) tried to ban "
+                                    f"{member.mention} (`{member}`) for **{htime}**"
+                                    f" with reason "
+                                    f"`{discord.utils.escape_mentions(reason)}`, but it failed. ", ctx.guild.id,
+                                    member.id, ctx.author.id)
                 continue
             if ban_length is None:
                 await ctx.reply(
@@ -529,7 +562,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
         for member in members:
             result = await mute_action(member, mute_length, reason)
             if not result:
-                await ctx.reply(f"❌ {member.mention} is already muted!")
+                await ctx.reply(f"❌ Failed to mute {member.mention}. Are they already banned or a mod?")
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) tried to mute "
+                                    f"{member.mention} (`{member}`) for **{htime}**"
+                                    f" with reason "
+                                    f"`{discord.utils.escape_mentions(reason)}`, but it failed. ", ctx.guild.id,
+                                    member.id, ctx.author.id)
                 continue
             if mute_length is None:
                 await ctx.reply(
