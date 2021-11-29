@@ -106,9 +106,7 @@ async def ban_action(user: typing.Union[discord.User, discord.Member], guild: di
         return False
     htime = humanize.precisedelta(ban_length)
     if await is_mod(guild, user):
-        await modlog.modlog(f"Tried to ban {user.mention} (`{user}`) for **{htime}** with reason "
-                            f"`{discord.utils.escape_mentions(reason)}`, but they are a mod.",
-                            guild.id, user.id)
+        await modlog.modlog(f"Tried to ban {user.mention} (`{user}`), but they are a mod.", guild.id, user.id)
         return False
     try:
         await guild.ban(user, reason=reason, delete_message_days=0)
@@ -139,8 +137,7 @@ async def mute_action(member: discord.Member, mute_length: typing.Optional[timed
         return False
     htime = humanize.precisedelta(mute_length)
     if await is_mod(member.guild, member):
-        await modlog.modlog(f"Tried to mute {member.mention} (`{member}`) for **{htime}** with reason "
-                            f"`{discord.utils.escape_mentions(reason)}`, but they are a mod.",
+        await modlog.modlog(f"Tried to mute {member.mention} (`{member}`), but they are a mod.",
                             member.guild.id, member.id)
         return False
     await member.add_roles(muted_role, reason=reason)
@@ -521,8 +518,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
             if not result:
                 await ctx.reply(f"❌ Failed to ban {member.mention}. Are they already banned or a mod?")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) tried to ban "
-                                    f"{member.mention} (`{member}`) for **{htime}**"
-                                    f" with reason "
+                                    f"{member.mention} (`{member}`) for "
+                                    f"{f'for **{htime}**' if htime else 'permanently'} with reason "
                                     f"`{discord.utils.escape_mentions(reason)}`, but it failed. ", ctx.guild.id,
                                     member.id, ctx.author.id)
                 continue
@@ -564,8 +561,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
             if not result:
                 await ctx.reply(f"❌ Failed to mute {member.mention}. Are they already banned or a mod?")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) tried to mute "
-                                    f"{member.mention} (`{member}`) for **{htime}**"
-                                    f" with reason "
+                                    f"{member.mention} (`{member}`) for "
+                                    f"{f'for **{htime}**' if htime else 'permanently'} with reason "
                                     f"`{discord.utils.escape_mentions(reason)}`, but it failed. ", ctx.guild.id,
                                     member.id, ctx.author.id)
                 continue
