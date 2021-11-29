@@ -126,13 +126,16 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
     def msgscore(msg: discord.Message):
         upvote_reactions = discord.utils.get(msg.reactions, emoji__id=830090068961656852)
         downvote_reactions = discord.utils.get(msg.reactions, emoji__id=830090093788004352)
-        return (0 if upvote_reactions is None else upvote_reactions.count) - \
-               (0 if downvote_reactions is None else downvote_reactions.count)
+        score = (0 if upvote_reactions is None else upvote_reactions.count) - \
+                (0 if downvote_reactions is None else downvote_reactions.count)
+        # msgscore is used as a sorting function. the negative timestamp means that for duplicate scores itll choose
+        # the highest of the second key, which for negative datetime, will be the oldest.
+        return score, msg.created_at.timestamp() * -1
 
     # command here
     @commands.command()
     @commands.is_owner()
-    async def topbanner(self, ctx: commands.Context):
+    async def topbanner(self, ctx: commands.Context, preview: bool = False):
         async with ctx.typing():
             server = self.bot.get_guild(829973626442088468)
             channel = server.get_channel(908859472288551015)
@@ -147,7 +150,7 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                 return
             msgs.sort(key=self.msgscore, reverse=True)
             for msg in msgs:
-                msgscore = self.msgscore(msg)
+                msgscore = self.msgscore(msg)[0]
                 if msgscore <= 0:
                     continue
                 # go through every attachment and embed, try to resize it to 16:9
@@ -167,7 +170,13 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                     bannermessage = msg
                     break
             if resizedimage is not None:  # we found a suitable banner
-                await server.edit(banner=resizedimage)
+                if preview:
+                    await ctx.reply(
+                        f"{bannermessage.author.mention}'s banner will be chosen with a score of **{msgscore}**!",
+                        file=discord.File(io.BytesIO(resizedimage), filename="banner.png"),
+                        allowed_mentions=discord.AllowedMentions.none())
+                else:
+                    await server.edit(banner=resizedimage)
                 await ctx.reply(f"{bannermessage.author.mention}'s banner was chosen with a score of **{msgscore}**!",
                                 file=discord.File(io.BytesIO(resizedimage), filename="banner.png"))
                 await bannermessage.delete()
