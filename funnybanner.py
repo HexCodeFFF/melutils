@@ -162,8 +162,12 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                             break
                 elif msg.embeds:
                     for embed in msg.embeds:
-                        if embed.image != discord.Embed.Empty:
+                        if embed.image:
                             resizedimage = await resize_url(embed.image.url)
+                            if resizedimage is not None:
+                                break
+                        elif embed.url and embed.type == "image":
+                            resizedimage = await resize_url(embed.url)
                             if resizedimage is not None:
                                 break
                 if resizedimage is not None:
