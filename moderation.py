@@ -18,8 +18,11 @@ from timeconverter import TimeConverter
 async def is_mod(guild: discord.Guild, user: typing.Union[discord.User, discord.Member]):
     if not isinstance(user, discord.Member):
         user = guild.get_member(user.id)
+        if user is None:
+            return False
     else:
-        assert user.guild == guild
+        if user.guild != guild:
+            return False
     if user.guild_permissions.manage_guild:
         return True
     async with aiosqlite.connect("database.sqlite") as db:
