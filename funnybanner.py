@@ -5,10 +5,10 @@ import random
 import typing
 
 import aiohttp
-import discord
+import nextcord as discord
 import twitter
 from PIL import Image
-from discord.ext import commands
+from nextcord.ext import commands
 
 import config
 from clogs import logger

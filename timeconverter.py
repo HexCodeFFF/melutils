@@ -1,7 +1,7 @@
 import re
 from datetime import timedelta
 
-from discord.ext import commands
+from nextcord.ext import commands
 
 
 class TimeConverter(commands.Converter):

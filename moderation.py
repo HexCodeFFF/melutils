@@ -3,10 +3,10 @@ import typing
 from datetime import datetime, timedelta, timezone
 
 import aiosqlite
-import discord
+import nextcord as discord
 import humanize
-from discord.ext import commands
-from discord.ext.commands import Greedy
+from nextcord.ext import commands
+from nextcord.ext.commands import Greedy
 
 import modlog
 import scheduler

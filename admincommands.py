@@ -2,8 +2,8 @@ import asyncio
 import typing
 from datetime import datetime, timezone
 
-import discord
-from discord.ext import commands
+import nextcord as discord
+from nextcord.ext import commands
 
 import scheduler
 from timeconverter import TimeConverter

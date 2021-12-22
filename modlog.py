@@ -2,8 +2,8 @@ import typing
 from datetime import datetime, timezone
 
 import aiosqlite
-import discord
-from discord.ext import commands
+import nextcord as discord
+from nextcord.ext import commands
 
 botcopy = commands.Bot
 

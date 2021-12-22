@@ -2,7 +2,7 @@ import copy
 import re
 import typing
 
-import discord
+import nextcord as discord
 
 
 def add_long_field(embed: discord.Embed, name: str, value: str, inline: bool = False,

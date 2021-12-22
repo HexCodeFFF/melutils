@@ -1,5 +1,5 @@
-import discord
-from discord.ext import commands
+import nextcord as discord
+from nextcord.ext import commands
 
 from clogs import logger
 from moderation import mod_only

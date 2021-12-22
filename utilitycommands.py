@@ -12,11 +12,11 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 import aiohttp
-import discord
+import nextcord as discord
 import humanize
-from discord.ext import commands
-from discord.ext.commands import PartialEmojiConversionFailure
-from discord.ext.commands.cooldowns import BucketType
+from nextcord.ext import commands
+from nextcord.ext.commands import PartialEmojiConversionFailure
+from nextcord.ext.commands.cooldowns import BucketType
 
 import scheduler
 from clogs import logger

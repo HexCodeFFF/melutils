@@ -2,8 +2,8 @@ import glob
 import os
 import sqlite3
 
-import discord
-from discord.ext import commands
+import nextcord as discord
+from nextcord.ext import commands
 
 import config
 import scheduler

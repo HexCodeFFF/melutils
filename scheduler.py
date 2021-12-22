@@ -4,10 +4,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import aiosqlite
-import discord
+import nextcord as discord
 import humanize
 from aioscheduler import TimedScheduler
-from discord.ext import commands
+from nextcord.ext import commands
 
 import modlog
 from clogs import logger

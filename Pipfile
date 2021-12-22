@@ -4,8 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-# dpy 2
-"discord.py" = {git = "https://github.com/Rapptz/discord.py.git"}
 coloredlogs = "*"
 # https://github.com/jmoiron/humanize/pull/204
 humanize = {git = "https://github.com/HexCodeFFF/humanize.git"}
@@ -16,8 +14,12 @@ docstring-parser = "*"
 emojis = "*"
 aiofiles = "*"
 pillow = "*"
+nextcord = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.9"
+
+[pipenv]
+allow_prereleases = true
