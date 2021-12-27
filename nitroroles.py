@@ -22,7 +22,7 @@ class UnicodeEmojiConverter(commands.Converter):
             raise UnicodeEmojiNotFound(argument)
         # `emoji` is a named tuple.
         # see: https://github.com/alexandrevicenzi/emojis/blob/master/emojis/db/db.py#L8
-        # we already confirmed its a valid emoji, so lets return the codepoint back
+        # we already confirmed it's a valid emoji, so lets return the codepoint back
         return emoji.emoji
 
 
