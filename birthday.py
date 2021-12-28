@@ -77,7 +77,7 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
                                 f"the server birthday category.", ctx.guild.id, modid=ctx.author.id)
         else:
             await moderation.update_server_config(ctx.guild.id, "birthday_category", category.id)
-            await ctx.reply(f"✔️ Set birthday category to **{discord.utils.escape_mentions(category.name)}**")
+            await ctx.reply(f"✔️ Set birthday category to **{category.name}**")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
                                 f"server birthday category to **{category.name}**.", ctx.guild.id, modid=ctx.author.id)
 

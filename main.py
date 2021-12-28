@@ -45,7 +45,8 @@ intents = discord.Intents.default()
 intents.members = True
 activity = discord.Activity(name=f"you | {config.command_prefix}help", type=discord.ActivityType.watching)
 bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity,
-                   intents=intents)
+                   intents=intents, allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=False,
+                                                                             replied_user=True))
 bot.add_cog(ErrorHandler(bot))
 bot.add_cog(HelpCommand(bot))
 bot.add_cog(FunCommands(bot))

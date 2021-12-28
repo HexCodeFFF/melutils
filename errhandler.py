@@ -23,7 +23,7 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, commanderror):
-        errorstring = discord.utils.escape_mentions(discord.utils.escape_markdown(str(commanderror)))
+        errorstring = discord.utils.escape_markdown(str(commanderror))
         if isinstance(commanderror, discord.Forbidden):
             if not ctx.channel.permissions_for(ctx.me).send_messages:
                 if ctx.author.permissions_for(ctx.me).send_messages:
@@ -35,7 +35,7 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
                     logger.warning("No permissions to send in command channel or to DM author.")
         if isinstance(commanderror, discord.ext.commands.errors.CommandNotFound):
             msg = ctx.message.content
-            cmd = discord.utils.escape_mentions(msg.split(' ')[0])
+            cmd = msg.split(' '[0])
             allcmds = []
             for botcom in self.bot.commands:
                 if not botcom.hidden:

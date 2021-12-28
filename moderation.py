@@ -82,7 +82,7 @@ async def ban_action(user: typing.Union[discord.User, discord.Member], guild: di
         if ban_length is None:
             try:
                 await user.send(f"You were permanently banned in **{guild.name}** with reason "
-                                f"`{discord.utils.escape_mentions(reason)}`.")
+                                f"`{reason}`.")
             except (discord.Forbidden, discord.HTTPException, AttributeError):
                 logger.debug("pass")
         else:
@@ -90,7 +90,7 @@ async def ban_action(user: typing.Union[discord.User, discord.Member], guild: di
             await scheduler.schedule(scheduletime, "unban", {"guild": guild.id, "member": user.id})
             try:
                 await user.send(f"You were banned in **{guild.name}** for **{htime}** with reason "
-                                f"`{discord.utils.escape_mentions(reason)}`.")
+                                f"`{reason}`.")
             except (discord.Forbidden, discord.HTTPException, AttributeError):
                 logger.debug("pass")
         return True
@@ -122,14 +122,14 @@ async def mute_action(member: discord.Member, mute_length: typing.Optional[timed
     if mute_length is None:
         try:
             await member.send(f"You were permanently muted in **{member.guild.name}** with reason "
-                              f"`{discord.utils.escape_mentions(reason)}`.")
+                              f"`{reason}`.")
         except (discord.Forbidden, discord.HTTPException, AttributeError):
             logger.debug("pass")
     else:
 
         try:
             await member.send(f"You were muted in **{member.guild.name}** for **{htime}** with reason "
-                              f"`{discord.utils.escape_mentions(reason)}`.")
+                              f"`{reason}`.")
         except (discord.Forbidden, discord.HTTPException, AttributeError):
             logger.debug("pass")
     return True
@@ -346,7 +346,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                 f"the server mod role.", ctx.guild.id, modid=ctx.author.id)
         else:
             await update_server_config(ctx.guild.id, "mod_role", role.id)
-            await ctx.reply(f"✔️ Set server moderator role to **{discord.utils.escape_mentions(role.name)}**")
+            await ctx.reply(f"✔️ Set server moderator role to **{role.name}**")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
                                 f"server mod role to {role.mention}", ctx.guild.id, modid=ctx.author.id)
 
@@ -368,7 +368,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                 f"the server mod role.", ctx.guild.id, modid=ctx.author.id)
         else:
             await update_server_config(ctx.guild.id, "thin_ice_role", role.id)
-            await ctx.reply(f"✔️ Set server thin ice role to **{discord.utils.escape_mentions(role.name)}**")
+            await ctx.reply(f"✔️ Set server thin ice role to **{role.name}**")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
                                 f"server thin ice role to {role.mention}", ctx.guild.id, modid=ctx.author.id)
 
@@ -406,7 +406,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await ctx.reply("✔️ Removed server modlog channel.")
         else:
             await update_server_config(ctx.guild.id, "log_channel", channel.id)
-            await ctx.reply(f"✔️ Set server modlog channel to **{discord.utils.escape_mentions(channel.mention)}**")
+            await ctx.reply(f"✔️ Set server modlog channel to **{channel.mention}**")
             await channel.send(f"This is the new modlog channel for {ctx.guild.name}!")
 
     @commands.command(aliases=[])
@@ -429,7 +429,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await update_server_config(ctx.guild.id, "bulk_log_channel", channel.id)
             await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) set the server bulklog channel to "
                                 f"{channel.mention} ({channel}).", ctx.guild.id, ctx.author.id)
-            await ctx.reply(f"✔️ Set server bulklog channel to **{discord.utils.escape_mentions(channel.mention)}**")
+            await ctx.reply(f"✔️ Set server bulklog channel to **{channel.mention}**")
 
     @commands.command(aliases=["banappeal"])
     @commands.has_guild_permissions(manage_guild=True)
@@ -449,7 +449,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                 f"the ban appeal link.", ctx.guild.id, modid=ctx.author.id)
         else:
             await update_server_config(ctx.guild.id, "ban_appeal_link", ban_appeal_link)
-            await ctx.reply(f"✔️ Set server ban appeal link to **{discord.utils.escape_mentions(ban_appeal_link)}** .")
+            await ctx.reply(f"✔️ Set server ban appeal link to **{ban_appeal_link}** .")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) set the "
                                 f"ban appeal link to {ban_appeal_link}", ctx.guild.id, modid=ctx.author.id)
 
@@ -478,22 +478,22 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) tried to ban "
                                     f"{member.mention} (`{member}`) for "
                                     f"{f'for **{htime}**' if htime else 'permanently'} with reason "
-                                    f"`{discord.utils.escape_mentions(reason)}`, but it failed. ", ctx.guild.id,
+                                    f"`{reason}`, but it failed. ", ctx.guild.id,
                                     member.id, ctx.author.id)
                 continue
             if ban_length is None:
                 await ctx.reply(
-                    f"✔ Permanently banned **{member.mention}** with reason `{discord.utils.escape_mentions(reason)}️`")
+                    f"✔ Permanently banned **{member.mention}** with reason `{reason}️`")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) banned"
                                     f" {member.mention} (`{member}`) with reason "
-                                    f"`{discord.utils.escape_mentions(reason)}️`", ctx.guild.id, member.id,
+                                    f"`{reason}️`", ctx.guild.id, member.id,
                                     ctx.author.id)
             else:
                 await ctx.reply(f"✔️ Banned **{member.mention}** for **{htime}** with reason "
-                                f"`{discord.utils.escape_mentions(reason)}`.")
+                                f"`{reason}`.")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) banned"
                                     f" {member.mention} (`{member}`) for {htime} with reason "
-                                    f"`{discord.utils.escape_mentions(reason)}`.", ctx.guild.id, member.id,
+                                    f"`{reason}`.", ctx.guild.id, member.id,
                                     ctx.author.id)
 
     @commands.command(aliases=["mu"])
@@ -521,24 +521,24 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) tried to mute "
                                     f"{member.mention} (`{member}`) for "
                                     f"{f'for **{htime}**' if htime else 'permanently'} with reason "
-                                    f"`{discord.utils.escape_mentions(reason)}`, but it failed. ", ctx.guild.id,
+                                    f"`{reason}`, but it failed. ", ctx.guild.id,
                                     member.id, ctx.author.id)
                 continue
             if mute_length is None:
                 await ctx.reply(
-                    f"✔ Permanently muted **{member.mention}** with reason `{discord.utils.escape_mentions(reason)}️`")
+                    f"✔ Permanently muted **{member.mention}** with reason `{reason}️`")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
                                     f"permanently muted {member.mention} (`{member}`) "
                                     f"with reason "
-                                    f"`{discord.utils.escape_mentions(reason)}️`", ctx.guild.id, member.id,
+                                    f"`{reason}️`", ctx.guild.id, member.id,
                                     ctx.author.id)
             else:
                 await ctx.reply(f"✔️ Muted **{member.mention}** for **{htime}** with reason "
-                                f"`{discord.utils.escape_mentions(reason)}`.")
+                                f"`{reason}`.")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) muted "
                                     f"{member.mention} (`{member}`) for **{htime}**"
                                     f" with reason "
-                                    f"`{discord.utils.escape_mentions(reason)}`.", ctx.guild.id, member.id,
+                                    f"`{reason}`.", ctx.guild.id, member.id,
                                     ctx.author.id)
 
     @commands.command(aliases=["um"])
@@ -648,7 +648,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                             modid=ctx.author.id, userid=user.id, db=db)
                         try:
                             await user.send(f"A warn you received in {ctx.guild.name} for was deleted. "
-                                            f"(`{discord.utils.escape_mentions(warn[2])}`)")
+                                            f"(`{warn[2]}`)")
                         except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
                             logger.debug("pass;" + str(e))
                     else:
@@ -685,7 +685,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                         modid=ctx.author.id, userid=user.id, db=db)
                     try:
                         await user.send(f"A previously deleted warn you received in {ctx.guild.name} was restored. "
-                                        f"(`{discord.utils.escape_mentions(warn[2])}`)")
+                                        f"(`{warn[2]}`)")
                     except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
                         logger.debug("pass;" + str(e))
                 else:
@@ -718,13 +718,13 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                   int(now.timestamp()), reason, points))
                 await db.commit()
             await ctx.reply(f"Warned {member.mention} with {points} infraction point{'' if points == 1 else 's'} for: "
-                            f"`{discord.utils.escape_mentions(reason)}`")
+                            f"`{reason}`")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
                                 f"warned {member.mention} (`{member}`) with {points}"
                                 f" infraction point{'' if points == 1 else 's'} for: "
-                                f"`{discord.utils.escape_mentions(reason)}`", ctx.guild.id, member.id, ctx.author.id)
+                                f"`{reason}`", ctx.guild.id, member.id, ctx.author.id)
             try:
-                await member.send(f"You were warned in {ctx.guild.name} for `{discord.utils.escape_mentions(reason)}`.")
+                await member.send(f"You were warned in {ctx.guild.name} for `{reason}`.")
             except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
                 logger.debug("pass;" + str(e))
             await on_warn(member, points)  # this handles autopunishments
@@ -742,7 +742,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
         await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
                             f"created a note for {member.mention} (`{member}`): "
-                            f"`{discord.utils.escape_mentions(n)}`", ctx.guild.id, member.id, ctx.author.id)
+                            f"`{n}`", ctx.guild.id, member.id, ctx.author.id)
         await ctx.reply(f"✅ Created note for {member.mention}")
 
     @commands.command(aliases=["ow", "transferwarn"])
@@ -772,15 +772,15 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await db.commit()
         await ctx.reply(
             f"Created warn on <t:{int(now.timestamp())}:D> for {member.mention} with {points} infraction "
-            f"point{'' if points == 1 else 's'} for: `{discord.utils.escape_mentions(reason)}`")
+            f"point{'' if points == 1 else 's'} for: `{reason}`")
         await modlog.modlog(
             f"{ctx.author.mention} (`{ctx.author}`) created warn on "
             f"<t:{int(now.timestamp())}:D> for {member.mention} (`{member}`) with"
             f" {points} "
             f"infraction point{'' if points == 1 else 's'} for: "
-            f"`{discord.utils.escape_mentions(reason)}`", ctx.guild.id, member.id, ctx.author.id)
+            f"`{reason}`", ctx.guild.id, member.id, ctx.author.id)
         # try:
-        #     await member.send(f"You were warned in {ctx.guild.name} for `{discord.utils.escape_mentions(reason)}`.")
+        #     await member.send(f"You were warned in {ctx.guild.name} for `{reason}`.")
         # except (discord.Forbidden, discord.HTTPException, AttributeError):
         #     logger.debug("pass")
         await on_warn(member, points)  # this handles autopunishments
