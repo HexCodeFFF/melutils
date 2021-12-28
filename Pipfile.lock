@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ec833fa4b2d52fa456fee02276aa0bb1af99398aff7674403f31e6a715807110"
+            "sha256": "2b8b964bd0ef9322e87cedb1c9ac8ea21a48fd45583cda5b607246e95d3bf54e"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -364,11 +364,11 @@
             "version": "==5.2.0"
         },
         "nextcord": {
+            "git": "https://github.com/nextcord/nextcord.git",
             "hashes": [
                 "sha256:dbe36137573cfe9368771d9155c411b3be398fbe4476477ef3b400d80e5c7e83"
             ],
-            "index": "pypi",
-            "version": "==2.0.0a4"
+            "ref": "95f64a8b5c520d4a8792c8bb0318900ee28af40d"
         },
         "oauthlib": {
             "hashes": [
@@ -430,7 +430,7 @@
                 "sha256:0003fd0079d152ecbd8111202c5a7dfa6a5569ffd65b235e45f3c2ecbee337b4",
                 "sha256:ff3b5a1ac0010d0967869f723e687d42cabc7dccf33b14934c92aa5168d260b3"
             ],
-            "markers": "python_full_version >= '3.8.0' and sys_platform == 'win32'",
+            "markers": "python_version >= '3.8' and sys_platform == 'win32'",
             "version": "==3.3"
         },
         "python-twitter": {

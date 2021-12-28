@@ -3,8 +3,8 @@ import typing
 from datetime import datetime, timedelta, timezone
 
 import aiosqlite
-import nextcord as discord
 import humanize
+import nextcord as discord
 from nextcord.ext import commands
 from nextcord.ext.commands import Greedy
 
@@ -68,40 +68,6 @@ async def update_server_config(server: int, config: str, value):
         await db.commit()
 
 
-async def set_up_muted_role(guild: discord.Guild):
-    logger.debug(f"SETTING UP MUTED ROLE FOR {guild}")
-    logger.debug("deleting existing role(s)")
-    roletask = [role.delete(reason='Setting up mute system.') for role in guild.roles if
-                role.name == "[MelUtils] muted"]
-    await asyncio.gather(*roletask)
-    logger.debug("creating new role")
-    muted_role = await guild.create_role(name="[MelUtils] muted", reason='Setting up mute system.')
-    logger.debug("overriding permissions on all channels")
-    await asyncio.gather(
-        *[channel.set_permissions(muted_role, send_messages=False, speak=False, add_reactions=False,
-                                  reason='Setting up mute system.')
-          for channel in guild.channels + guild.categories])
-    logger.debug("setting config")
-    await update_server_config(guild.id, "muted_role", muted_role.id)
-    return muted_role
-
-    # async with aiosqlite.connect("database.sqlite") as db:
-    #     async with db.execute("SELECT muted_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
-
-
-async def get_muted_role(guild: discord.Guild) -> discord.Role:
-    async with aiosqlite.connect("database.sqlite") as db:
-        async with db.execute("SELECT muted_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
-            mutedrole = await cur.fetchone()
-    if mutedrole is None or mutedrole[0] is None:
-        muted_role = await set_up_muted_role(guild)
-    else:
-        muted_role = guild.get_role(mutedrole[0])
-        if muted_role is None:
-            muted_role = await set_up_muted_role(guild)
-    return muted_role
-
-
 async def ban_action(user: typing.Union[discord.User, discord.Member], guild: discord.Guild,
                      ban_length: typing.Optional[timedelta], reason: str):
     bans = [ban.user for ban in await guild.bans()]
@@ -135,15 +101,24 @@ async def ban_action(user: typing.Union[discord.User, discord.Member], guild: di
 
 
 async def mute_action(member: discord.Member, mute_length: typing.Optional[timedelta], reason: str):
-    muted_role = await get_muted_role(member.guild)
-    if muted_role in member.roles:
+    if member.timeout is not None:
         return False
     htime = humanize.precisedelta(mute_length)
     if await is_mod(member.guild, member):
         await modlog.modlog(f"Tried to mute {member.mention} (`{member}`), but they are a mod.",
                             member.guild.id, member.id)
         return False
-    await member.add_roles(muted_role, reason=reason)
+    if mute_length is None or mute_length > timedelta(days=28):
+        # max timeout is 28days
+        muteend = (datetime.now(tz=timezone.utc) + mute_length).timestamp() if mute_length else None
+        await member.edit(timeout=datetime.now(tz=timezone.utc) + timedelta(days=28))
+        await scheduler.schedule(datetime.now(tz=timezone.utc) + timedelta(days=28),
+                                 "refresh_mute", {"guild": member.guild.id, "member": member.id, "muteend": muteend})
+    else:
+        scheduletime = datetime.now(tz=timezone.utc) + mute_length
+        await member.edit(timeout=scheduletime)
+        # purely cosmetic
+        await scheduler.schedule(scheduletime, "unmute", {"guild": member.guild.id, "member": member.id})
     if mute_length is None:
         try:
             await member.send(f"You were permanently muted in **{member.guild.name}** with reason "
@@ -151,9 +126,7 @@ async def mute_action(member: discord.Member, mute_length: typing.Optional[timed
         except (discord.Forbidden, discord.HTTPException, AttributeError):
             logger.debug("pass")
     else:
-        scheduletime = datetime.now(tz=timezone.utc) + mute_length
-        await scheduler.schedule(scheduletime, "unmute",
-                                 {"guild": member.guild.id, "member": member.id, "mute_role": muted_role.id})
+
         try:
             await member.send(f"You were muted in **{member.guild.name}** for **{htime}** with reason "
                               f"`{discord.utils.escape_mentions(reason)}`.")
@@ -243,23 +216,6 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 modlog.modlog(f"{message.author.mention} (`{message.author}`) "
                               f"was automatically banned for mass ping.", message.guild.id, message.author.id)
             )
-        if message.guild and isinstance(message.author, discord.Member):
-            async with aiosqlite.connect("database.sqlite") as db:
-                async with db.execute("SELECT muted_role FROM server_config WHERE guild=?", (message.guild.id,)) as cur:
-                    mutedrole = await cur.fetchone()
-            if mutedrole is not None and mutedrole[0] is not None:
-                if mutedrole[0] in [role.id for role in message.author.roles]:
-                    await message.delete()
-
-    @commands.Cog.listener()
-    async def on_guild_channel_create(self, channel):
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT muted_role FROM server_config WHERE guild=?", (channel.guild.id,)) as cur:
-                mutedrole = await cur.fetchone()
-        if mutedrole is not None and mutedrole[0] is not None:
-            muted_role = channel.guild.get_role(mutedrole[0])
-            await channel.set_permissions(muted_role, send_messages=False, speak=False,
-                                          reason='Setting up mute system.')
 
     # delete unban events if someone manually unbans with discord.
     @commands.Cog.listener()
@@ -317,14 +273,13 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
-        # delete unmute events if someone removed the role manually with discord
-        muted_role = await get_muted_role(after.guild)
-        if muted_role in before.roles and muted_role not in after.roles:  # if muted role manually removed
+        # delete unmute events if someone manually untimed out
+        if before.timeout is not None and after.timeout is None:  # if muted role manually removed
             actuallycancelledanytasks = False
             async with aiosqlite.connect("database.sqlite") as db:
                 async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                      "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                      (after.guild.id, after.id, "unmute")) as cur:
+                                      "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
+                                      (after.guild.id, after.id, "unmute", "refresh_mute")) as cur:
                     async for row in cur:
                         await scheduler.canceltask(row[0], db)
                         actuallycancelledanytasks = True
@@ -575,7 +530,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
                                     f"permanently muted {member.mention} (`{member}`) "
                                     f"with reason "
-                                    f"{discord.utils.escape_mentions(reason)}️`", ctx.guild.id, member.id,
+                                    f"`{discord.utils.escape_mentions(reason)}️`", ctx.guild.id, member.id,
                                     ctx.author.id)
             else:
                 await ctx.reply(f"✔️ Muted **{member.mention}** for **{htime}** with reason "
@@ -599,16 +554,16 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if not members:
             await ctx.reply("❌ members is a required argument that is missing.")
             return
-        muted_role = await get_muted_role(ctx.guild)
         async with aiosqlite.connect("database.sqlite") as db:
             for member in members:
+                # cancel all unmute events
                 async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                      "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                      (ctx.guild.id, member.id, "unmute")) as cur:
+                                      "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
+                                      (ctx.guild.id, member.id, "unmute", "refresh_mute")) as cur:
                     async for row in cur:
                         await scheduler.canceltask(row[0], db)
-                await member.remove_roles(muted_role)
 
+                await member.edit(timeout=None)
                 await ctx.reply(f"✔️ Unmuted {member.mention}")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
                                     f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id, db=db)
@@ -630,7 +585,6 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if not members:
             await ctx.reply("❌ members is a required argument that is missing.")
             return
-        # muted_role = await get_muted_role(ctx.guild)
         bans = [ban.user for ban in await ctx.guild.bans()]
         async with aiosqlite.connect("database.sqlite") as db:
             for member in members:

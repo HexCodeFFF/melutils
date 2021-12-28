@@ -4,8 +4,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import aiosqlite
-import nextcord as discord
 import humanize
+import nextcord as discord
 from aioscheduler import TimedScheduler
 from nextcord.ext import commands
 
@@ -68,12 +68,33 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
                                  modlog.modlog(f"{member.mention} (`{member}`) "
                                                f"was automatically unbanned.", guild.id, member.id))
         elif eventtype == "unmute":
+            # purely cosmetic
             guild = await botcopy.fetch_guild(eventdata["guild"])
             member = await guild.fetch_member(eventdata["member"])
-            await asyncio.gather(member.remove_roles(discord.Object(eventdata["mute_role"])),
-                                 member.send(f"You were unmuted in **{guild.name}**."),
+            await asyncio.gather(member.send(f"You were unmuted in **{guild.name}**."),
                                  modlog.modlog(f"{member.mention} (`{member}`) "
                                                f"was automatically unmuted.", guild.id, member.id))
+        elif eventtype == "refresh_mute":
+            guild = await botcopy.fetch_guild(eventdata["guild"])
+            member = await guild.fetch_member(eventdata["member"])
+            if eventdata["muteend"] is None:
+                await member.edit(timeout=datetime.now(tz=timezone.utc) + timedelta(days=28))
+                await schedule(datetime.now(tz=timezone.utc) + timedelta(days=28), "refresh_mute",
+                               {"guild": member.guild.id, "member": member.id, "muteend": None})
+                logger.debug(f"Refreshed {member}'s permanent mute in {guild}")
+            else:
+                muteend = datetime.fromtimestamp(eventdata["muteend"], tz=timezone.utc)
+                if muteend - datetime.now(tz=timezone.utc) > timedelta(days=28):
+                    await member.edit(timeout=datetime.now(tz=timezone.utc) + timedelta(days=28))
+                    await schedule(datetime.now(tz=timezone.utc) + timedelta(days=28),
+                                   "refresh_mute",
+                                   {"guild": member.guild.id, "member": member.id, "muteend": eventdata["muteend"]})
+                    logger.debug(f"Refreshed {member}'s mute in {guild}. ends {muteend}")
+                else:
+                    await member.edit(timeout=muteend)
+                    await schedule(muteend, "unmute", {"guild": member.guild.id, "member": member.id})
+                    logger.debug(f"Refreshed {member}'s mute for the last time in {guild}. ends {muteend}")
+
         elif eventtype == "un_thin_ice":
             guild = await botcopy.fetch_guild(eventdata["guild"])
             member = await guild.fetch_member(eventdata["member"])
