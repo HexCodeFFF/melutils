@@ -1,8 +1,8 @@
 import typing
 
 import aiosqlite
-import nextcord as discord
 import emojis
+import nextcord as discord
 from nextcord.ext import commands
 from nextcord.http import Route
 
@@ -116,7 +116,7 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
                         if name:
                             await role.edit(name=name)
                             await ctx.reply(f"✔️ Updated your booster role name: {role.mention}",
-                                            allowed_mentions=discord.AllowedMentions.none())
+                                            )
                         else:
                             await role.delete()
                             await db.execute("DELETE FROM booster_roles WHERE guild=? AND user=?",
@@ -141,8 +141,7 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
                     "REPLACE INTO booster_roles (guild, user, role) VALUES (?, ?, ?)",
                     (ctx.guild.id, ctx.author.id, role.id))
                 await db.commit()
-                await ctx.reply(f"✔️ Created your booster role: {role.mention}",
-                                allowed_mentions=discord.AllowedMentions.none())
+                await ctx.reply(f"✔️ Created your booster role: {role.mention}")
             else:
                 await ctx.reply("❌ Booster roles are not enabled on this server.")
 
@@ -168,11 +167,11 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
                         if color:
                             await role.edit(color=color)
                             await ctx.reply(f"✔️ Updated your booster role color: {role.mention}",
-                                            allowed_mentions=discord.AllowedMentions.none())
+                                            )
                         else:
                             await role.edit(color=discord.Color.default())
                             await ctx.reply(f"✔️ Deleted your booster role color: {role.mention}",
-                                            allowed_mentions=discord.AllowedMentions.none())
+                                            )
                         return
                 await ctx.reply("❌ You do not have a booster role. Create one with `m.boosterrole`")
             else:
@@ -222,16 +221,16 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
                                 icon = await icon.read()
                             await self.edit_role_icon(role, icon)
                             await ctx.reply(f"✔️ Updated your booster role icon: {role.mention}",
-                                            allowed_mentions=discord.AllowedMentions.none())
+                                            )
                         else:
                             if ctx.message.attachments:
                                 await self.edit_role_icon(role, await ctx.message.attachments[0].read())
                                 await ctx.reply(f"✔️ Updated your booster role icon: {role.mention}",
-                                                allowed_mentions=discord.AllowedMentions.none())
+                                                )
                             else:
                                 await self.edit_role_icon(role, None)
                                 await ctx.reply(f"✔️ Deleted your booster role icon: {role.mention}",
-                                                allowed_mentions=discord.AllowedMentions.none())
+                                                )
                         return
                 await ctx.reply("❌ You do not have a booster role. Create one with `m.boosterrole`")
             else:
@@ -259,11 +258,11 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
         if hoist:
             await moderation.update_server_config(ctx.guild.id, "booster_role_hoist", hoist.id)
             await ctx.reply(f"✔️ Set booster role hoist to {hoist.mention}.",
-                            allowed_mentions=discord.AllowedMentions.none())
+                            )
         else:
             await moderation.update_server_config(ctx.guild.id, "booster_role_hoist", None)
             await ctx.reply(f"✔️ Disabled booster role hoist.",
-                            allowed_mentions=discord.AllowedMentions.none())
+                            )
 
     @moderation.mod_only()
     @commands.command()
@@ -291,7 +290,7 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
                                  (ctx.guild.id, member.id, role.id))
                 await db.commit()
                 await ctx.reply(f"✔️ Set {member.mention}'s booster role to {role.mention}.",
-                                allowed_mentions=discord.AllowedMentions.none())
+                                )
             else:
                 await ctx.reply("❌ Booster roles are not enabled for this server.")
 

@@ -31,4 +31,4 @@ async def modlog(msg: str, guildid: int, userid: typing.Optional[int] = None, mo
         return
     for ch in modlogchannel:  # send to normal and bulk
         channel = await botcopy.fetch_channel(ch)
-        await channel.send("**[ModLog]** " + msg, allowed_mentions=discord.AllowedMentions.none())
+        await channel.send("**[ModLog]** " + msg, )

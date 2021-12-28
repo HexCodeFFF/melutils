@@ -1,4 +1,5 @@
 import io
+import typing
 
 import aiosqlite
 import nextcord as discord
@@ -17,11 +18,12 @@ class MacroCog(commands.Cog, name="Macros"):
     """
     Create and use "macros", text snippets sendable with a command
     """
+
     def __init__(self, bot):
         self.bot = bot
 
     @mod_only()
-    @commands.command(aliases=["createmacro", "newmacro", "setmacro"])
+    @commands.command(aliases=["createmacro", "newmacro", "setmacro", "am"])
     async def addmacro(self, ctx: commands.Context, name: alphanumeric, *, content):
         """
         creates a macro
@@ -60,20 +62,22 @@ class MacroCog(commands.Cog, name="Macros"):
             await ctx.reply("⚠️ No macro found with that name!")
 
     @commands.command(aliases=["m", "tag"])
-    async def macro(self, ctx: commands.Context, name):
+    async def macro(self, ctx: commands.Context, name: typing.Optional[str]):
         """
         send the content of a macro
         :param ctx: discord content
         :param name: the name of the macro
         :return: macro content
         """
+        if name is None:
+            return await self.macros(ctx)
         async with aiosqlite.connect("database.sqlite") as db:
             async with db.execute("SELECT content FROM macros WHERE server=? AND name=?", (ctx.guild.id, name)) as cur:
                 result = await cur.fetchone()
         if result is None or result[0] is None:
             await ctx.reply("⚠️ No macro found with that name!")
         else:
-            await ctx.send(result[0], allowed_mentions=discord.AllowedMentions.none())
+            await ctx.send(result[0])
 
     @commands.command(aliases=["listmacros", "allmacros", "lm"])
     async def macros(self, ctx: commands.Context):
@@ -86,7 +90,7 @@ class MacroCog(commands.Cog, name="Macros"):
                 macros = [i[0] for i in await cursor.fetchall()]
         outstr = f"{len(macros)} macro{'' if len(macros) == 1 else 's'}: {', '.join(macros)}"
         if len(outstr) < 2000:
-            await ctx.reply(outstr, allowed_mentions=discord.AllowedMentions.none())
+            await ctx.reply(outstr)
         else:
             with io.StringIO() as buf:
                 buf.write(outstr)

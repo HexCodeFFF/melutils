@@ -49,7 +49,7 @@ class BulkLog(commands.Cog):
             modlogchannel = modlogchannel[0]
             channel = await self.bot.fetch_channel(modlogchannel)
             await channel.send(embeds=embedutils.split_embed(embed), files=files,
-                               allowed_mentions=discord.AllowedMentions.none())
+                               )
 
     @commands.Cog.listener()
     async def on_message_delete(self, msg: discord.Message):

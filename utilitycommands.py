@@ -262,7 +262,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
             if content or outattachments:
                 await asyncio.gather(
                     ctx.send(content=content, files=outattachments, embed=embed,
-                             allowed_mentions=discord.AllowedMentions.none()),
+                             ),
                     ctx.message.delete()
                 )
                 return
@@ -278,7 +278,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     if ctx.message.reference.resolved.content else ""
                 await asyncio.gather(
                     ctx.send(content=content, files=outattachments, embed=embed,
-                             allowed_mentions=discord.AllowedMentions.none()),
+                             ),
                     ctx.message.delete(),
                     ctx.message.reference.resolved.delete()
                 )
@@ -432,9 +432,9 @@ class UtilityCommands(commands.Cog, name="Utility"):
         if obj is None:
             obj = ctx.author
         if hasattr(obj, "mention"):
-            await ctx.reply(f"{obj.mention}'s ID is `{obj.id}`", allowed_mentions=discord.AllowedMentions.none())
+            await ctx.reply(f"{obj.mention}'s ID is `{obj.id}`", )
         else:
-            await ctx.reply(f"{str(obj)}'s ID is `{obj.id}`", allowed_mentions=discord.AllowedMentions.none())
+            await ctx.reply(f"{str(obj)}'s ID is `{obj.id}`", )
 
 
 '''

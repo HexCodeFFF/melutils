@@ -83,7 +83,7 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
             outstr += f"<#{rule[1]}>: {discord.utils.get(ctx.guild.emojis, id=rule[2])}" \
                       f"{' (applies to threads)' if rule[3] else ''}\n"
         if len(outstr) < 2000:
-            await ctx.reply(outstr, allowed_mentions=discord.AllowedMentions.none())
+            await ctx.reply(outstr, )
         else:
             with io.StringIO() as buf:
                 buf.write(outstr)
