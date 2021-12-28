@@ -62,7 +62,7 @@ class MacroCog(commands.Cog, name="Macros"):
             await ctx.reply("⚠️ No macro found with that name!")
 
     @commands.command(aliases=["m", "tag"])
-    async def macro(self, ctx: commands.Context, name: typing.Optional[str]):
+    async def macro(self, ctx: commands.Context, name: str = None):
         """
         send the content of a macro
         :param ctx: discord content

@@ -63,7 +63,7 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
 
     @commands.command()
     @moderation.mod_only()
-    async def birthdaycategory(self, ctx, *, category: typing.Optional[discord.CategoryChannel] = None):
+    async def birthdaycategory(self, ctx, *, category: discord.CategoryChannel = None):
         """
         Set the category for birthday channels to be created, or disable them.
 

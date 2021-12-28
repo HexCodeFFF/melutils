@@ -420,9 +420,9 @@ class UtilityCommands(commands.Cog, name="Utility"):
 
     @commands.command()
     async def id(self, ctx: commands.Context,
-                 obj: typing.Optional[typing.Union[discord.abc.GuildChannel, discord.User, discord.Guild,
-                                                   discord.Thread, discord.PartialEmoji, discord.Role,
-                                                   discord.Object]] = None):
+                 obj: typing.Union[discord.abc.GuildChannel, discord.User, discord.Guild,
+                                   discord.Thread, discord.PartialEmoji, discord.Role,
+                                   discord.Object] = None):
         """
         gets the ID of a discord object
         :param ctx: discord context

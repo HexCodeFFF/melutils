@@ -331,7 +331,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.command(aliases=["setmodrole", "addmodrole", "moderatorrole"])
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def modrole(self, ctx, *, role: typing.Optional[discord.Role] = None):
+    async def modrole(self, ctx, *, role: discord.Role = None):
         """
         Sets the server moderator role.
         Anyone who has the mod role can use commands such as mute and warn.
@@ -353,7 +353,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.command(aliases=["setthinicerole", "addthinicerole", "setthinice"])
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def thinicerole(self, ctx, *, role: typing.Optional[discord.Role] = None):
+    async def thinicerole(self, ctx, *, role: discord.Role = None):
         """
         Sets the server thin ice role and activates the thin ice system.
         Anyone who has the mod role can use commands such as mute and warn.
@@ -393,7 +393,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                "setmodlog"])
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def logchannel(self, ctx, *, channel: typing.Optional[discord.TextChannel] = None):
+    async def logchannel(self, ctx, *, channel: discord.TextChannel = None):
         """
         Sets the server modlog channel.
         All moderator actions will be logged in this channel.
@@ -412,7 +412,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.command(aliases=[])
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def bulklogchannel(self, ctx, *, channel: typing.Optional[discord.TextChannel] = None):
+    async def bulklogchannel(self, ctx, *, channel: discord.TextChannel = None):
         """
         Sets the server "bulk log" channel.
         All server actions will appear in the channel.

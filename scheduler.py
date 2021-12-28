@@ -178,6 +178,7 @@ async def canceltask(dbrowid: int, db: Optional[aiosqlite.Connection] = None):
         await db.execute("DELETE FROM schedule WHERE id=?", (dbrowid,))
         await db.commit()
     # it throws a runtime warning "coroutine was never ran" like no shit that is the entire idea
+    loadedtasks[dbrowid].callback.close()
     # TODO: suppress this mf!!
     del loadedtasks[dbrowid]
     logger.debug(f"Cancelled task {dbrowid}")

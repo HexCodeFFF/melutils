@@ -96,7 +96,7 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
 
     @booster_only()
     @commands.command()
-    async def boosterrole(self, ctx: commands.Context, *, name: typing.Optional[str]):
+    async def boosterrole(self, ctx: commands.Context, *, name: str = None):
         """
         create or change the name of your booster role
         :param ctx: discord context
@@ -147,7 +147,7 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
 
     @booster_only()
     @commands.command()
-    async def boosterrolecolor(self, ctx: commands.Context, *, color: typing.Optional[discord.Color]):
+    async def boosterrolecolor(self, ctx: commands.Context, *, color: discord.Color = None):
         """
         change the color of your booster role
         :param ctx: discord context
@@ -177,6 +177,14 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
             else:
                 await ctx.reply("❌ Booster roles are not enabled on this server.")
 
+    # @boosterrolecolor.error
+    # async def boosterrolecolorerror(self, ctx: commands.Context, error: Exception):
+    #     if isinstance(error, commands.MissingRequiredArgument) and \
+    #             ctx.current_parameter == self.boosterrolecolor.params['color']:
+    #         return logger.debug("some handled behavior")
+    #     else:
+    #         return await errhandler.on_command_error(ctx, error, True)
+
     def edit_role_icon(self, role: discord.Role, icon: typing.Union[bytes, str, None], *,
                        reason: typing.Optional[str] = None):
         payload = {
@@ -198,7 +206,7 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
     @booster_only()
     @commands.command()
     async def boosterroleicon(self, ctx: commands.Context, *,
-                              icon: typing.Optional[typing.Union[UnicodeEmojiConverter, discord.Emoji]]):
+                              icon: typing.Union[UnicodeEmojiConverter, discord.Emoji] = None):
         """
         change the icon of your booster role
 
@@ -249,7 +257,7 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
 
     @moderation.mod_only()
     @commands.command()
-    async def boosterroleshoist(self, ctx: commands.Context, hoist: typing.Optional[discord.Role]):
+    async def boosterroleshoist(self, ctx: commands.Context, hoist: discord.Role = None):
         """
         moderation command to set a role for booster roles to be created underneath
         :param ctx: discord context

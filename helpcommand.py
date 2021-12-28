@@ -23,7 +23,7 @@ class HelpCommand(commands.Cog, name="Help Command"):
         return showcog
 
     @commands.command()
-    async def help(self, ctx, *, inquiry: typing.Optional[str] = None):
+    async def help(self, ctx, *, inquiry: str = None):
         """
         Shows help on bot commands.
 

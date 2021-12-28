@@ -6,6 +6,7 @@ import nextcord as discord
 from nextcord.ext import commands
 
 import config
+import errhandler
 import scheduler
 from admincommands import AdminCommands
 from autoreaction import AutoReactionCog
@@ -95,6 +96,13 @@ async def on_command_completion(ctx):
 async def on_ready():
     scheduler.botcopy = bot
     logger.log(35, f"Logged in as {bot.user.name}!")
+
+
+@bot.command()
+async def testcommand(ctx: commands.Context, someargument: str, color: discord.Color=None):
+    await ctx.reply(f"You inputted {someargument} and {color}")
+
+
 
 
 bot.run(config.bot_token)

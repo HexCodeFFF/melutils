@@ -15,7 +15,7 @@ class ThreadUtilsCog(commands.Cog, name="Thread Utils"):
     @commands.command(aliases=["lock"])
     @commands.has_guild_permissions(manage_threads=True)
     @commands.bot_has_guild_permissions(manage_threads=True)
-    async def lockthread(self, ctx: commands.Context, thread: typing.Optional[discord.Thread]):
+    async def lockthread(self, ctx: commands.Context, thread: discord.Thread = None):
         """
         locks a thread (archives it and only allows moderators to unarchive it)
         :param ctx: discord context
@@ -32,7 +32,7 @@ class ThreadUtilsCog(commands.Cog, name="Thread Utils"):
     @commands.command(aliases=["archive"])
     @commands.has_guild_permissions(manage_threads=True)
     @commands.bot_has_guild_permissions(manage_threads=True)
-    async def archivethread(self, ctx, thread: typing.Optional[discord.Thread]):
+    async def archivethread(self, ctx, thread: discord.Thread = None):
         """
         archives a thread (archives it and only allows moderators to unarchive it)
         :param ctx: discord context
