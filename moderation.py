@@ -194,9 +194,9 @@ async def on_warn(member: discord.Member, issued_points: float):
                 punishment_text = "permanently" if duration.total_seconds() == 0 else \
                     f"for {humanize.precisedelta(duration)}"
                 await modlog.modlog(
-                    f"{member.mention} (`{member}`) has been automatically {punishment_type_future_tense[punishment[2]]}"
-                    f" {punishment_text} due to reaching {punishment[1]} points {timespan_text}",
-                    member.guild.id, member.id, db=db)
+                    f"{member.mention} (`{member}`) has been automatically "
+                    f"{punishment_type_future_tense[punishment[2]]}  {punishment_text} due to reaching {punishment[1]} "
+                    f"points {timespan_text}", member.guild.id, member.id, db=db)
 
 
 class ModerationCog(commands.Cog, name="Moderation"):
