@@ -14,7 +14,7 @@ docstring-parser = "*"
 emojis = "*"
 aiofiles = "*"
 pillow = "*"
-nextcord = {git = "https://github.com/nextcord/nextcord.git#master"}
+nextcord = {git = "https://github.com/nextcord/nextcord.git"}
 
 [dev-packages]
 
