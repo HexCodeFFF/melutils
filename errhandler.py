@@ -20,11 +20,11 @@ class ErrorHandler(commands.Cog, command_attrs=dict(hidden=True)):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, commanderror: Exception):
-        await on_command_error(ctx, commanderror, False)
+        await on_command_error(ctx, commanderror)
 
 
 # command here
-def get_full_class_name(self, obj):
+def get_full_class_name(obj):
     module = obj.__class__.__module__
     if module is None or module == str.__class__.__module__:
         return obj.__class__.__name__
@@ -88,8 +88,9 @@ async def on_command_error(ctx: commands.Context, commanderror: Exception):
 
         with io.BytesIO() as buf:
             buf.write(bytes(trheader + ''.join(
-                traceback.format_exception(etype=type(commanderror), value=commanderror,
-                                           tb=commanderror.__traceback__)), encoding='utf8'))
+                # etype=type(commanderror),
+                traceback.format_exception(commanderror)
+            ), encoding='utf8'))
             buf.seek(0)
             await ctx.reply(
                 f"{config.emojis['2exclamation']} `{get_full_class_name(commanderror)}: {errorstring}`",

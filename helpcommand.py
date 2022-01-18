@@ -87,26 +87,47 @@ class HelpCommand(commands.Cog, name="Help Command"):
                 embed.add_field(name="Command Information", value=command_information, inline=False)
 
                 paramtext = []
+                flagcommand = False
                 # for every "clean paramater" (no self or ctx)
                 for param in cmd.clean_params.values():
-                    # get command description from docstring
-                    paramhelp = discord.utils.get(docstring.params, arg_name=param.name)
-                    # not found in docstring
-                    if paramhelp is None:
-                        paramtext.append(f"**{param.name}** - 'No description'")
-                        continue
-                    # optional argument (param has a default value)
-                    if param.default != param.empty:  # param.empty != None
-                        pend = f" (optional, defaults to `{param.default}`)"
+                    def addparam(paramname, paramdefault=None, flagparam=False):
+                        # get command description from docstring
+                        paramhelp = discord.utils.get(docstring.params, arg_name=paramname)
+                        # not found in docstring
+                        if paramhelp is None:
+                            paramtext.append(f"**{paramname}** - 'No description'")
+                        else:
+                            # optional argument (param has a default value)
+                            if paramdefault:
+                                pend = f" (optional, defaults to `{paramdefault}`)"
+                            elif flagparam:
+                                pend = f" (optional)"
+                            else:
+                                pend = ""
+                            # format and add to paramtext list
+                            paramtext.append(f"**{paramname}** - "
+                                             f"{paramhelp.description if paramhelp.description else 'No description'}"
+                                             f"{pend}")
+
+                    if hasattr(param.annotation, "get_flags"):
+                        flagcommand = True
+                        # if command arg is flag converter, list all flag arguments
+                        for name, val in param.annotation.get_flags().items():
+                            addparam(name, val.default, True)
                     else:
-                        pend = ""
-                    # format and add to paramtext list
-                    paramtext.append(f"**{param.name}** - "
-                                     f"{paramhelp.description if paramhelp.description else 'No description'}{pend}")
+                        # otherwise, just do it normally
+                        addparam(param.name, param.default != param.empty)
                 # if there are params found
                 if len(paramtext):
                     # join list and add to help
                     embed.add_field(name="Parameters", value="\n".join(paramtext), inline=False)
+                # add warning about flag command
+                if flagcommand:
+                    embed.add_field(name="Flag Syntax", value="This command uses **flag syntax**. To specify a "
+                                                              "param, type `paramname: paramcontent`\nFor example, "
+                                                              "if you wanted to specify `limit` as `10`, "
+                                                              "you would run `m.examplecommand limit: 10`.",
+                                    inline=False)
                 if docstring.returns:
                     embed.add_field(name="Returns", value=docstring.returns.description, inline=False)
             else:
