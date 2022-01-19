@@ -47,8 +47,8 @@ async def saveurl(url) -> bytes:
                 resp.raise_for_status()
 
 
-def slice_per(source, step):
-    return [source[i::step] for i in range(step)]
+def slice_per(l, n):
+    return [l[i:i + n] for i in range(0, len(l), n)]
 
 
 class UtilityCommands(commands.Cog, name="Utility"):
@@ -189,12 +189,20 @@ class UtilityCommands(commands.Cog, name="Utility"):
         limit: typing.Optional[int] = None
         before: typing.Optional[typing.Union[discord.Object, datetime]] = None
         after: typing.Optional[typing.Union[discord.Object, datetime]] = None
-        channel: typing.Optional[discord.TextChannel] = None
+        channel: typing.Optional[typing.Union[discord.TextChannel, discord.Thread]] = None
 
     @commands.command()
     @commands.has_permissions(manage_messages=True, create_public_threads=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True, create_public_threads=True)
-    async def selectiveclone(self, ctx: commands.Context, opts: SelectiveCloneSettings):
+    async def selectiveclone(self, ctx: commands.Context, *, opts: SelectiveCloneSettings):
+        """
+        Clone some messages from a channel into another and then delete the original messages.
+
+        :param before: Retrieve messages before this date or message.
+        :param after: Retrieve messages after this date or message.
+        :param limit: The (maximum) number of messages to retrieve.
+        :param channel: The channel to clone the messages into. If unspecified, will create thread on current channel.
+        """
         # set target and destination
         target = ctx.channel
         destination = opts.channel
