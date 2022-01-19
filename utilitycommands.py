@@ -18,6 +18,7 @@ from nextcord.ext import commands
 from nextcord.ext.commands import PartialEmojiConversionFailure
 from nextcord.ext.commands.cooldowns import BucketType
 
+import config
 import scheduler
 from clogs import logger
 from timeconverter import TimeConverter
@@ -44,6 +45,10 @@ async def saveurl(url) -> bytes:
                 return await resp.read()
             else:
                 resp.raise_for_status()
+
+
+def slice_per(source, step):
+    return [source[i::step] for i in range(step)]
 
 
 class UtilityCommands(commands.Cog, name="Utility"):
@@ -101,6 +106,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
         :param target: the channel to clone
         :param destination: the channel to clone to
         """
+
         async with ctx.channel.typing():
             await destination.send(f"Cloning messages from {target.mention}")
             count = 0
@@ -123,6 +129,119 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     logger.error(f"Failed to clone message {msg.id}")
                     logger.error(e, exc_info=(type(e), e, e.__traceback__))
             await destination.send(f"Cloned {count} message(s) from {target.mention}")
+
+    class AdvancedPurgeSettings(commands.FlagConverter, case_insensitive=True):
+        limit: typing.Optional[int] = 100
+        before: typing.Optional[typing.Union[discord.Object, datetime]] = None
+        after: typing.Optional[typing.Union[discord.Object, datetime]] = None
+        around: typing.Optional[typing.Union[discord.Object, datetime]] = None
+        include: typing.Tuple[discord.User, ...] = None
+        exclude: typing.Tuple[discord.User, ...] = None
+        oldest_first: typing.Optional[bool] = None
+        clean_purge: bool = False
+
+    @commands.command(aliases=["apurge", "advpurge", "adp", "apg"])
+    @commands.has_permissions(manage_messages=True)
+    @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
+    async def advancedpurge(self, ctx, *, opts: AdvancedPurgeSettings):
+        """
+        like m.purge but with more options
+
+        :param limit: The number of messages to search through. This is not the number of messages that will be deleted, though it can be.
+        :param before: Delete messages before this date or message.
+        :param after: Delete messages after this date or message.
+        :param around: Delete messages around this date or message. When using this argument, the maximum limit is 101.
+        :param include: One or more members to delete messages from as a whitelist. Incompatible with `exclude`.
+        :param exclude: One or more members to not delete messages from as a blacklist. Incompatible with `include`.
+        :param oldest_first: If set to True, delete messages in oldest->newest order. Defaults to True if after is specified, otherwise False.
+        :param clean_purge: Deletes the invoking command before purging and purge success command after 10 seconds.
+        """
+
+        def inclfunc(m):
+            return m.author in opts.include
+
+        def exclfunc(m):
+            return m.author not in opts.exclude
+
+        check = None
+        if opts.include and opts.exclude:
+            raise commands.errors.UserInputError("Include and Exclude cannot both be specified.")
+        if opts.include:
+            check = inclfunc
+        if opts.exclude:
+            check = exclfunc
+        pargs = {}
+        if check:
+            pargs['check'] = check
+        for flag, value in opts:
+            if flag not in ["include", "exclude", "clean_purge"] and value:
+                pargs[flag] = value
+        if opts.clean_purge:
+            await ctx.message.delete()
+        deleted = await ctx.channel.purge(**pargs)
+        msg = f"{config.emojis['check']}Deleted `{len(deleted)}` message{'' if len(deleted) == 1 else 's'}!"
+        if opts.clean_purge:
+            await ctx.send(msg, delete_after=10)
+        else:
+            await ctx.reply(msg)
+
+    class SelectiveCloneSettings(commands.FlagConverter, case_insensitive=True):
+        limit: typing.Optional[int] = None
+        before: typing.Optional[typing.Union[discord.Object, datetime]] = None
+        after: typing.Optional[typing.Union[discord.Object, datetime]] = None
+        channel: typing.Optional[discord.TextChannel] = None
+
+    @commands.command()
+    @commands.has_permissions(manage_messages=True, create_public_threads=True)
+    @commands.bot_has_permissions(manage_messages=True, read_message_history=True, create_public_threads=True)
+    async def selectiveclone(self, ctx: commands.Context, opts: SelectiveCloneSettings):
+        # set target and destination
+        target = ctx.channel
+        destination = opts.channel
+        if not destination:
+            if isinstance(target, discord.Thread):
+                raise commands.errors.UserInputError("Cannot create thread on current channel. Specify a channel.")
+            else:
+                destination = await target.create_thread(name=f"Selective Clone from #{target.name}",
+                                                         type=discord.ChannelType.public_thread)
+        if opts.before is None:
+            opts.before = ctx.message
+        to_delete = []
+        async with ctx.channel.typing():
+            # clone into target
+            count = 0
+            async for msg in target.history(limit=opts.limit, before=opts.before, after=opts.after, oldest_first=True):
+                try:
+                    embed = discord.Embed()
+                    embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar.url)
+                    embed.timestamp = msg.created_at
+                    embed.description = msg.content
+                    if msg.reference:
+                        if msg.reference.resolved:
+                            embed.add_field(name=f"Replying to *{msg.reference.resolved.author.display_name}*",
+                                            value=msg.reference.resolved.content)
+                    await destination.send(embeds=[embed] + msg.embeds,
+                                           files=await asyncio.gather(*[att.to_file() for att in msg.attachments]))
+                    count += 1
+                except Exception as e:
+                    await destination.send(f"Failed to clone message {msg.id}\n```{e}```")
+                    logger.error(f"Failed to clone message {msg.id}")
+                    logger.error(e, exc_info=(type(e), e, e.__traceback__))
+                to_delete.append(msg)
+            # delete them
+            single_delete = []
+            bulk_delete = []
+            # taken from .purge, can directly compare the ID if its safe to bulk delete (less than 14 days old)
+            minimum_time = int((time.time() - 14 * 24 * 60 * 60) * 1000.0 - 1420070400000) << 22
+            for msg in to_delete:
+                if msg.id < minimum_time:
+                    single_delete.append(msg)
+                else:
+                    bulk_delete.append(msg)
+            # await the deletes all at once frfr
+            await asyncio.wait([msg.delete() for msg in single_delete] +
+                               [target.delete_messages(msgs) for msgs in slice_per(bulk_delete, 100)])
+            await ctx.reply(f"Cloned {count} message{'' if count == 1 else 's'} into {destination.mention}")
 
     @commands.cooldown(1, 60 * 60, BucketType.channel)
     @commands.command()

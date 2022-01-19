@@ -42,6 +42,29 @@ if numoftables == 0:
         con.executescript(makesql)
     logger.debug("initialized db!")
 
+# make copy of .reply() function
+discord.Message.orig_reply = discord.Message.reply
+
+
+async def safe_reply(self: discord.Message, *args, **kwargs) -> discord.Message:
+    # replies to original message if it exists, just sends in channel if it doesnt
+    try:
+        # retrieve this message, will throw NotFound if its not found and go to the fallback option.
+        # turns out trying to send a message will close any file objects which causes problems
+        await self.channel.fetch_message(self.id)
+        # reference copy of .reply() since this func will override .reply()
+        return await self.orig_reply(*args, **kwargs)
+    # for some reason doesnt throw specific error. if its unrelated httpexception itll just throw again and fall to the
+    # error handler hopefully
+    except (discord.errors.NotFound, discord.errors.HTTPException) as e:
+        logger.debug(f"abandoning reply to {self.id} due to {errhandler.get_full_class_name(e)}, "
+                     f"sending message in {self.channel.id}.")
+        return await self.channel.send(*args, **kwargs)
+
+
+# override .reply()
+discord.Message.reply = safe_reply
+
 intents = discord.Intents.default()
 intents.members = True
 activity = discord.Activity(name=f"you | {config.command_prefix}help", type=discord.ActivityType.watching)

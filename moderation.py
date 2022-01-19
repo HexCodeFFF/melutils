@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 import aiosqlite
 import humanize
 import nextcord as discord
-import nextcord.ext.commands
 from nextcord.ext import commands
 from nextcord.ext.commands import Greedy
 
@@ -990,65 +989,6 @@ class ModerationCog(commands.Cog, name="Moderation"):
             modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) purged {num_messages} message(s) from "
                           f"{ctx.channel.mention}", ctx.guild.id, modid=ctx.author.id)
         )
-
-    class AdvancedPurgeSettings(commands.FlagConverter, case_insensitive=True):
-        limit: typing.Optional[int] = 100
-        before: typing.Optional[typing.Union[discord.Object, datetime]] = None
-        after: typing.Optional[typing.Union[discord.Object, datetime]] = None
-        around: typing.Optional[typing.Union[discord.Object, datetime]] = None
-        include: typing.Tuple[discord.User, ...] = None
-        exclude: typing.Tuple[discord.User, ...] = None
-        oldest_first: typing.Optional[bool] = None
-        clean_purge: bool = False
-
-    @commands.command(aliases=["apurge", "advpurge", "adp", "apg"])
-    @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
-    async def advancedpurge(self, ctx, *, opts: AdvancedPurgeSettings):
-        """
-        like m.purge but with more options
-
-        :param limit: The number of messages to search through. This is not the number of messages that will be deleted, though it can be.
-        :param before: Delete messages before this date or message.
-        :param after: Delete messages after this date or message.
-        :param around: Delete messages around this date or message. When using this argument, the maximum limit is 101.
-        :param include: One or more members to delete messages from as a whitelist. Incompatible with `exclude`.
-        :param exclude: One or more members to not delete messages from as a blacklist. Incompatible with `include`.
-        :param oldest_first: If set to True, delete messages in oldest->newest order. Defaults to True if after is specified, otherwise False.
-        :param clean_purge: Deletes the invoking command before purging and purge success command after 10 seconds.
-        """
-
-        def inclfunc(m):
-            return m.author in opts.include
-
-        def exclfunc(m):
-            return m.author not in opts.exclude
-
-        check = None
-        if opts.include and opts.exclude:
-            raise nextcord.ext.commands.errors.UserInputError("Include and Exclude cannot both be specified.")
-        if opts.include:
-            check = inclfunc
-        if opts.exclude:
-            check = exclfunc
-        pargs = {}
-        if check:
-            pargs['check'] = check
-        for flag, value in opts:
-            if flag not in ["include", "exclude", "clean_purge"] and value:
-                pargs[flag] = value
-        if opts.clean_purge:
-            await ctx.message.delete()
-        deleted = await ctx.channel.purge(**pargs)
-        msg = f"{config.emojis['check']}Deleted `{len(deleted)}` message{'' if len(deleted) == 1 else 's'}!"
-        if opts.clean_purge:
-            await ctx.send(msg, delete_after=10)
-        else:
-            await ctx.reply(msg)
-
-    @commands.command()
-    async def error(self, ctx):
-        raise Exception("penis")
 
 
 # @commands.is_owner()
