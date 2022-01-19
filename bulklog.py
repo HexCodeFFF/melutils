@@ -58,7 +58,8 @@ class BulkLog(commands.Cog):
             "Channel": f"{msg.channel.mention} (#{msg.channel})",
             "Author": f"{msg.author.mention} (@{msg.author})",
             "Content": msg.system_content,
-            "Links": "\n".join([att.url for att in msg.attachments] + [emb.url for emb in msg.embeds])
+            "Links": "\n".join([att.url for att in msg.attachments] + [emb.url for emb in msg.embeds
+                                                                       if emb.url != discord.Embed.Empty])
                      or "No Embeds or Attachments",
             "Timestamp": f"<t:{int(msg.created_at.timestamp())}:F>",
             "Message ID": str(msg.id)
