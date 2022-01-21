@@ -1,3 +1,4 @@
+import asyncio
 import glob
 import os
 import sqlite3
@@ -13,6 +14,7 @@ from autoreaction import AutoReactionCog
 from birthday import BirthdayCog
 from bulklog import BulkLog
 from clogs import logger
+from database import InitDB, create_db
 from errhandler import ErrorHandler
 from funcommands import FunCommands
 from funnybanner import FunnyBanner
@@ -42,6 +44,11 @@ if numoftables == 0:
     with con:
         con.executescript(makesql)
     logger.debug("initialized db!")
+con.close()
+
+# loop = asyncio.new_event_loop()
+# loop.run_until_complete(create_db())
+# loop.close()
 
 # make copy of .reply() function
 discord.Message.orig_reply = discord.Message.reply
@@ -72,6 +79,7 @@ activity = discord.Activity(name=f"you | {config.command_prefix}help", type=disc
 bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity,
                    intents=intents, allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=False,
                                                                              replied_user=True))
+bot.add_cog(InitDB(bot))
 bot.add_cog(ErrorHandler(bot))
 bot.add_cog(HelpCommand(bot))
 bot.add_cog(FunCommands(bot))
@@ -124,10 +132,8 @@ async def on_ready():
 
 
 @bot.command()
-async def testcommand(ctx: commands.Context, someargument: str, color: discord.Color=None):
+async def testcommand(ctx: commands.Context, someargument: str, color: discord.Color = None):
     await ctx.reply(f"You inputted {someargument} and {color}")
-
-
 
 
 bot.run(config.bot_token)

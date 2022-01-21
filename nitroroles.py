@@ -7,6 +7,7 @@ from nextcord.ext import commands
 from nextcord.http import Route
 
 import moderation
+import database
 
 
 class UnicodeEmojiNotFound(commands.BadArgument):
@@ -54,45 +55,43 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
 
     @commands.Cog.listener()
     async def on_booster_remove(self, member: discord.Member):
-        async with aiosqlite.connect("database.sqlite") as db:
-            cur: aiosqlite.Cursor = await db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
-                                                     (member.guild.id,))
-            booster_roles = await cur.fetchone()
-            if booster_roles:
-                cur: aiosqlite.Cursor = await db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
-                                                         (member.guild.id, member.id))
-                role = await cur.fetchone()
+        cur: aiosqlite.Cursor = await database.db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
+                                                 (member.guild.id,))
+        booster_roles = await cur.fetchone()
+        if booster_roles:
+            cur: aiosqlite.Cursor = await database.db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
+                                                     (member.guild.id, member.id))
+            role = await cur.fetchone()
+            if role is not None:
+                role = member.guild.get_role(role[2])
                 if role is not None:
-                    role = member.guild.get_role(role[2])
-                    if role is not None:
-                        await member.remove_roles(role)
-                        await member.send(f"It seems you've stopped boosting **{member.guild.name}**! Your booster role"
-                                          f" ({role.mention}) has been removed. You can get it back by re-boosting the "
-                                          f"server.")
+                    await member.remove_roles(role)
+                    await member.send(f"It seems you've stopped boosting **{member.guild.name}**! Your booster role"
+                                      f" ({role.mention}) has been removed. You can get it back by re-boosting the "
+                                      f"server.")
 
     @commands.Cog.listener()
     async def on_booster_add(self, member: discord.Member):
-        async with aiosqlite.connect("database.sqlite") as db:
-            cur: aiosqlite.Cursor = await db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
-                                                     (member.guild.id,))
-            booster_roles = await cur.fetchone()
-            if booster_roles:
-                cur: aiosqlite.Cursor = await db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
-                                                         (member.guild.id, member.id))
-                role = await cur.fetchone()
+        cur: aiosqlite.Cursor = await database.db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
+                                                 (member.guild.id,))
+        booster_roles = await cur.fetchone()
+        if booster_roles:
+            cur: aiosqlite.Cursor = await database.db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
+                                                     (member.guild.id, member.id))
+            role = await cur.fetchone()
+            if role is not None:
+                role = member.guild.get_role(role[2])
                 if role is not None:
-                    role = member.guild.get_role(role[2])
-                    if role is not None:
-                        await member.add_roles(role)
-                        await member.send(f"Thank you for boosting **{member.guild.name}**! It seems you already have "
-                                          f"a booster role, so I have given it to you. You can modify this role with "
-                                          f"the commands `m.boosterrole`, `m.boosterrolecolor`, "
-                                          f"and `m.boosterroleicon`.")
-                        return
-                await member.send(f"Thank you for boosting **{member.guild.name}**! One of the perks of boosting this "
-                                  f"server is your very own custom booster role! You can modify this role with "
-                                  f"the commands `m.boosterrole`, `m.boosterrolecolor`, "
-                                  f"and `m.boosterroleicon`.")
+                    await member.add_roles(role)
+                    await member.send(f"Thank you for boosting **{member.guild.name}**! It seems you already have "
+                                      f"a booster role, so I have given it to you. You can modify this role with "
+                                      f"the commands `m.boosterrole`, `m.boosterrolecolor`, "
+                                      f"and `m.boosterroleicon`.")
+                    return
+            await member.send(f"Thank you for boosting **{member.guild.name}**! One of the perks of boosting this "
+                              f"server is your very own custom booster role! You can modify this role with "
+                              f"the commands `m.boosterrole`, `m.boosterrolecolor`, "
+                              f"and `m.boosterroleicon`.")
 
     @booster_only()
     @commands.command()
@@ -102,48 +101,47 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
         :param ctx: discord context
         :param name: the name of your booster role, leave blank to remove.
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            cur: aiosqlite.Cursor = await db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
-                                                     (ctx.guild.id,))
-            booster_roles = await cur.fetchone()
-            if booster_roles:
-                cur: aiosqlite.Cursor = await db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
-                                                         (ctx.guild.id, ctx.author.id))
-                role = await cur.fetchone()
+        cur: aiosqlite.Cursor = await database.db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
+                                                 (ctx.guild.id,))
+        booster_roles = await cur.fetchone()
+        if booster_roles:
+            cur: aiosqlite.Cursor = await database.db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
+                                                     (ctx.guild.id, ctx.author.id))
+            role = await cur.fetchone()
+            if role is not None:
+                role = ctx.guild.get_role(role[2])
                 if role is not None:
-                    role = ctx.guild.get_role(role[2])
-                    if role is not None:
-                        if name:
-                            await role.edit(name=name)
-                            await ctx.reply(f"✔️ Updated your booster role name: {role.mention}",
-                                            )
-                        else:
-                            await role.delete()
-                            await db.execute("DELETE FROM booster_roles WHERE guild=? AND user=?",
-                                             (ctx.guild.id, ctx.author.id))
-                            await db.commit()
-                            await ctx.reply("✔️ Deleted your booster role")
-                        return
-                    if name is None:
-                        await ctx.reply("❓ Specify a name for your role")
-                        return
-                role = await ctx.guild.create_role(name=name, hoist=True)
-                cur: aiosqlite.Cursor = await db.execute(
-                    "SELECT booster_role_hoist FROM main.server_config WHERE guild=?",
-                    (ctx.guild.id,))
-                booster_role_hoist = await cur.fetchone()
-                if booster_role_hoist is not None and booster_role_hoist[0] is not None:
-                    booster_role_hoist = ctx.guild.get_role(booster_role_hoist[0])
-                    if booster_role_hoist is not None:
-                        await ctx.guild.edit_role_positions({role: booster_role_hoist.position - 1})
-                await ctx.author.add_roles(role)
-                await db.execute(
-                    "REPLACE INTO booster_roles (guild, user, role) VALUES (?, ?, ?)",
-                    (ctx.guild.id, ctx.author.id, role.id))
-                await db.commit()
-                await ctx.reply(f"✔️ Created your booster role: {role.mention}")
-            else:
-                await ctx.reply("❌ Booster roles are not enabled on this server.")
+                    if name:
+                        await role.edit(name=name)
+                        await ctx.reply(f"✔️ Updated your booster role name: {role.mention}",
+                                        )
+                    else:
+                        await role.delete()
+                        await database.db.execute("DELETE FROM booster_roles WHERE guild=? AND user=?",
+                                         (ctx.guild.id, ctx.author.id))
+                        await database.db.commit()
+                        await ctx.reply("✔️ Deleted your booster role")
+                    return
+                if name is None:
+                    await ctx.reply("❓ Specify a name for your role")
+                    return
+            role = await ctx.guild.create_role(name=name, hoist=True)
+            cur: aiosqlite.Cursor = await database.db.execute(
+                "SELECT booster_role_hoist FROM main.server_config WHERE guild=?",
+                (ctx.guild.id,))
+            booster_role_hoist = await cur.fetchone()
+            if booster_role_hoist is not None and booster_role_hoist[0] is not None:
+                booster_role_hoist = ctx.guild.get_role(booster_role_hoist[0])
+                if booster_role_hoist is not None:
+                    await ctx.guild.edit_role_positions({role: booster_role_hoist.position - 1})
+            await ctx.author.add_roles(role)
+            await database.db.execute(
+                "REPLACE INTO booster_roles (guild, user, role) VALUES (?, ?, ?)",
+                (ctx.guild.id, ctx.author.id, role.id))
+            await database.db.commit()
+            await ctx.reply(f"✔️ Created your booster role: {role.mention}")
+        else:
+            await ctx.reply("❌ Booster roles are not enabled on this server.")
 
     @booster_only()
     @commands.command()
@@ -153,29 +151,28 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
         :param ctx: discord context
         :param color: hex or RGB color
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            cur: aiosqlite.Cursor = await db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
-                                                     (ctx.guild.id,))
-            booster_roles = await cur.fetchone()
-            if booster_roles:
-                cur: aiosqlite.Cursor = await db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
-                                                         (ctx.guild.id, ctx.author.id))
-                role = await cur.fetchone()
+        cur: aiosqlite.Cursor = await database.db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
+                                                 (ctx.guild.id,))
+        booster_roles = await cur.fetchone()
+        if booster_roles:
+            cur: aiosqlite.Cursor = await database.db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
+                                                     (ctx.guild.id, ctx.author.id))
+            role = await cur.fetchone()
+            if role is not None:
+                role = ctx.guild.get_role(role[2])
                 if role is not None:
-                    role = ctx.guild.get_role(role[2])
-                    if role is not None:
-                        if color:
-                            await role.edit(color=color)
-                            await ctx.reply(f"✔️ Updated your booster role color: {role.mention}",
-                                            )
-                        else:
-                            await role.edit(color=discord.Color.default())
-                            await ctx.reply(f"✔️ Deleted your booster role color: {role.mention}",
-                                            )
-                        return
-                await ctx.reply("❌ You do not have a booster role. Create one with `m.boosterrole`")
-            else:
-                await ctx.reply("❌ Booster roles are not enabled on this server.")
+                    if color:
+                        await role.edit(color=color)
+                        await ctx.reply(f"✔️ Updated your booster role color: {role.mention}",
+                                        )
+                    else:
+                        await role.edit(color=discord.Color.default())
+                        await ctx.reply(f"✔️ Deleted your booster role color: {role.mention}",
+                                        )
+                    return
+            await ctx.reply("❌ You do not have a booster role. Create one with `m.boosterrole`")
+        else:
+            await ctx.reply("❌ Booster roles are not enabled on this server.")
 
     # @boosterrolecolor.error
     # async def boosterrolecolorerror(self, ctx: commands.Context, error: Exception):
@@ -213,36 +210,35 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
         :param ctx: discord context
         :param icon: a unicode or discord emoji. leave blank to set icon to attachment or delete icon if no attachments
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            cur: aiosqlite.Cursor = await db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
-                                                     (ctx.guild.id,))
-            booster_roles = await cur.fetchone()
-            if booster_roles:
-                cur: aiosqlite.Cursor = await db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
-                                                         (ctx.guild.id, ctx.author.id))
-                role = await cur.fetchone()
+        cur: aiosqlite.Cursor = await database.db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
+                                                 (ctx.guild.id,))
+        booster_roles = await cur.fetchone()
+        if booster_roles:
+            cur: aiosqlite.Cursor = await database.db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
+                                                     (ctx.guild.id, ctx.author.id))
+            role = await cur.fetchone()
+            if role is not None:
+                role = ctx.guild.get_role(role[2])
                 if role is not None:
-                    role = ctx.guild.get_role(role[2])
-                    if role is not None:
-                        if icon:
-                            if isinstance(icon, discord.Emoji):
-                                icon = await icon.read()
-                            await self.edit_role_icon(role, icon)
+                    if icon:
+                        if isinstance(icon, discord.Emoji):
+                            icon = await icon.read()
+                        await self.edit_role_icon(role, icon)
+                        await ctx.reply(f"✔️ Updated your booster role icon: {role.mention}",
+                                        )
+                    else:
+                        if ctx.message.attachments:
+                            await self.edit_role_icon(role, await ctx.message.attachments[0].read())
                             await ctx.reply(f"✔️ Updated your booster role icon: {role.mention}",
                                             )
                         else:
-                            if ctx.message.attachments:
-                                await self.edit_role_icon(role, await ctx.message.attachments[0].read())
-                                await ctx.reply(f"✔️ Updated your booster role icon: {role.mention}",
-                                                )
-                            else:
-                                await self.edit_role_icon(role, None)
-                                await ctx.reply(f"✔️ Deleted your booster role icon: {role.mention}",
-                                                )
-                        return
-                await ctx.reply("❌ You do not have a booster role. Create one with `m.boosterrole`")
-            else:
-                await ctx.reply("❌ Booster roles are not enabled on this server.")
+                            await self.edit_role_icon(role, None)
+                            await ctx.reply(f"✔️ Deleted your booster role icon: {role.mention}",
+                                            )
+                    return
+            await ctx.reply("❌ You do not have a booster role. Create one with `m.boosterrole`")
+        else:
+            await ctx.reply("❌ Booster roles are not enabled on this server.")
 
     @moderation.mod_only()
     @commands.command()
@@ -281,26 +277,25 @@ class NitroRolesCog(commands.Cog, name="Booster Roles"):
         :param member: the member to assign the role to
         :param role: the role to set as the booster role
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            cur: aiosqlite.Cursor = await db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
-                                                     (ctx.guild.id,))
-            booster_roles = await cur.fetchone()
-            if booster_roles:
-                cur: aiosqlite.Cursor = await db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
-                                                         (ctx.guild.id, member.id))
-                oldrole = await cur.fetchone()
+        cur: aiosqlite.Cursor = await database.db.execute("SELECT booster_roles FROM main.server_config WHERE guild=?",
+                                                 (ctx.guild.id,))
+        booster_roles = await cur.fetchone()
+        if booster_roles:
+            cur: aiosqlite.Cursor = await database.db.execute("SELECT * FROM booster_roles WHERE guild=? AND user=?",
+                                                     (ctx.guild.id, member.id))
+            oldrole = await cur.fetchone()
+            if oldrole is not None:
+                oldrole = ctx.guild.get_role(oldrole[2])
                 if oldrole is not None:
-                    oldrole = ctx.guild.get_role(oldrole[2])
-                    if oldrole is not None:
-                        await member.remove_roles(oldrole)
-                await member.add_roles(role)
-                await db.execute("REPLACE INTO booster_roles (guild, user, role) VALUES (?,?,?)",
-                                 (ctx.guild.id, member.id, role.id))
-                await db.commit()
-                await ctx.reply(f"✔️ Set {member.mention}'s booster role to {role.mention}.",
-                                )
-            else:
-                await ctx.reply("❌ Booster roles are not enabled for this server.")
+                    await member.remove_roles(oldrole)
+            await member.add_roles(role)
+            await database.db.execute("REPLACE INTO booster_roles (guild, user, role) VALUES (?,?,?)",
+                             (ctx.guild.id, member.id, role.id))
+            await database.db.commit()
+            await ctx.reply(f"✔️ Set {member.mention}'s booster role to {role.mention}.",
+                            )
+        else:
+            await ctx.reply("❌ Booster roles are not enabled for this server.")
 
 
 '''

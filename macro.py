@@ -8,7 +8,7 @@ from nextcord.ext import commands
 from clogs import logger
 from moderation import mod_only
 from modlog import modlog
-
+import database
 
 def alphanumeric(argument: str):
     return ''.join(i for i in argument if i.isalnum())
@@ -32,11 +32,10 @@ class MacroCog(commands.Cog, name="Macros"):
         :param name: name of the macro
         :param content: macro content
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            await db.execute(
-                "REPLACE INTO macros(server,name,content) VALUES (?,?,?)",
-                (ctx.guild.id, name, content))
-            await db.commit()
+        await database.db.execute(
+            "REPLACE INTO macros(server,name,content) VALUES (?,?,?)",
+            (ctx.guild.id, name, content))
+        await database.db.commit()
         await ctx.reply(f"✔️ Added macro `{name}`.")
         await modlog(f"{ctx.author.mention} (`{ctx.author}`) added macro `{name}`.", ctx.guild.id, modid=ctx.author.id)
 
@@ -49,11 +48,10 @@ class MacroCog(commands.Cog, name="Macros"):
         :param ctx: discord context
         :param name: name of the macro
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            cur = await db.execute(
-                "DELETE FROM macros WHERE server=? AND name=?",
-                (ctx.guild.id, name))
-            await db.commit()
+        cur = await database.db.execute(
+            "DELETE FROM macros WHERE server=? AND name=?",
+            (ctx.guild.id, name))
+        await database.db.commit()
         if cur.rowcount > 0:
             await ctx.reply(f"✔️ Deleted macro {name}.")
             await modlog(f"{ctx.author.mention} (`{ctx.author}`) deleted macro `{name}`.", ctx.guild.id,
@@ -71,9 +69,8 @@ class MacroCog(commands.Cog, name="Macros"):
         """
         if name is None:
             return await self.macros(ctx)
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT content FROM macros WHERE server=? AND name=?", (ctx.guild.id, name)) as cur:
-                result = await cur.fetchone()
+        async with database.db.execute("SELECT content FROM macros WHERE server=? AND name=?", (ctx.guild.id, name)) as cur:
+            result = await cur.fetchone()
         if result is None or result[0] is None:
             await ctx.reply("⚠️ No macro found with that name!")
         else:
@@ -84,10 +81,9 @@ class MacroCog(commands.Cog, name="Macros"):
         """
         list all available macros
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT name FROM macros WHERE server=?",
-                                  (ctx.guild.id,)) as cursor:
-                macros = [i[0] for i in await cursor.fetchall()]
+        async with database.db.execute("SELECT name FROM macros WHERE server=?",
+                              (ctx.guild.id,)) as cursor:
+            macros = [i[0] for i in await cursor.fetchall()]
         outstr = f"{len(macros)} macro{'' if len(macros) == 1 else 's'}: {', '.join(macros)}"
         if len(outstr) < 2000:
             await ctx.reply(outstr)

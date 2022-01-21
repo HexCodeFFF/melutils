@@ -7,7 +7,7 @@ import typing
 import aiosqlite
 import nextcord as discord
 from nextcord.ext import commands
-
+import database
 import embedutils
 
 
@@ -41,15 +41,13 @@ class BulkLog(commands.Cog):
         :param embed: embed object, passed through embedutils.split_embed() to .send()
         :param files: list of files, passed straight to .send()
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT bulk_log_channel FROM server_config WHERE guild=?", (guildid,)) as cur:
-                modlogchannel = await cur.fetchone()
-            if modlogchannel is None or modlogchannel[0] is None:
-                return
-            modlogchannel = modlogchannel[0]
-            channel = await self.bot.fetch_channel(modlogchannel)
-            await channel.send(embeds=embedutils.split_embed(embed), files=files,
-                               )
+        async with database.db.execute("SELECT bulk_log_channel FROM server_config WHERE guild=?", (guildid,)) as cur:
+            modlogchannel = await cur.fetchone()
+        if modlogchannel is None or modlogchannel[0] is None:
+            return
+        modlogchannel = modlogchannel[0]
+        channel = await self.bot.fetch_channel(modlogchannel)
+        await channel.send(embeds=embedutils.split_embed(embed), files=files)
 
     @commands.Cog.listener()
     async def on_message_delete(self, msg: discord.Message):

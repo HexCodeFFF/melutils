@@ -14,6 +14,7 @@ import scheduler
 from clogs import logger
 from embedutils import add_long_field, split_embed
 from timeconverter import TimeConverter
+import database
 
 
 async def is_mod(guild: discord.Guild, user: typing.Union[discord.User, discord.Member]):
@@ -26,9 +27,8 @@ async def is_mod(guild: discord.Guild, user: typing.Union[discord.User, discord.
             return False
     if user.guild_permissions.manage_guild:
         return True
-    async with aiosqlite.connect("database.sqlite") as db:
-        async with db.execute("SELECT mod_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
-            modrole = await cur.fetchone()
+    async with database.db.execute("SELECT mod_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
+        modrole = await cur.fetchone()
     if modrole is None:
         return False
     modrole = modrole[0]
@@ -43,9 +43,8 @@ def mod_only():
             raise commands.NoPrivateMessage
         if ctx.author.guild_permissions.manage_guild:
             return True
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT mod_role FROM server_config WHERE guild=?", (ctx.guild.id,)) as cur:
-                modrole = await cur.fetchone()
+        async with database.db.execute("SELECT mod_role FROM server_config WHERE guild=?", (ctx.guild.id,)) as cur:
+            modrole = await cur.fetchone()
         if modrole is None:
             raise commands.CheckFailure("Server has no moderator role set up. Ask an admin to add one.")
         modrole = modrole[0]
@@ -59,14 +58,13 @@ def mod_only():
 
 async def update_server_config(server: int, config: str, value):
     """DO NOT ALLOW CONFIG TO BE PASSED AS A VARIABLE, PRE-DEFINED STRINGS ONLY."""
-    async with aiosqlite.connect("database.sqlite") as db:
-        async with db.execute("SELECT COUNT(guild) FROM server_config WHERE guild=?", (server,)) as cur:
-            guilds = await cur.fetchone()
-        if guilds[0]:  # if there already is a row for this guild
-            await db.execute(f"UPDATE server_config SET {config} = ? WHERE guild=?", (value, server))
-        else:  # if not, make one
-            await db.execute(f"INSERT INTO server_config(guild, {config}) VALUES (?, ?)", (server, value))
-        await db.commit()
+    async with database.db.execute("SELECT COUNT(guild) FROM server_config WHERE guild=?", (server,)) as cur:
+        guilds = await cur.fetchone()
+    if guilds[0]:  # if there already is a row for this guild
+        await database.db.execute(f"UPDATE server_config SET {config} = ? WHERE guild=?", (value, server))
+    else:  # if not, make one
+        await database.db.execute(f"INSERT INTO server_config(guild, {config}) VALUES (?, ?)", (server, value))
+    await database.db.commit()
 
 
 async def ban_action(user: typing.Union[discord.User, discord.Member], guild: discord.Guild,
@@ -137,67 +135,66 @@ async def mute_action(member: discord.Member, mute_length: typing.Optional[timed
 
 
 async def on_warn(member: discord.Member, issued_points: float):
-    async with aiosqlite.connect("database.sqlite") as db:
-        async with db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
-                              (member.guild.id,)) as cur:
-            thin_ice_role = await cur.fetchone()
-        if thin_ice_role is not None and thin_ice_role[0] is not None and thin_ice_role[0] in [role.id for role in
-                                                                                               member.roles]:
-            await db.execute("UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice+? WHERE guild=? AND user=?",
-                             (issued_points, member.guild.id, member.id))
-            await db.commit()
-            threshold = thin_ice_role[1]
-            async with db.execute("SELECT warns_on_thin_ice FROM thin_ice WHERE guild=? AND user=?",
-                                  (member.guild.id, member.id)) as cur:
-                warns_on_thin_ice = (await cur.fetchone())[0]
-            if warns_on_thin_ice >= threshold:
-                await ban_action(member, member.guild, None, f"Automatically banned for receiving more than {threshold}"
-                                                             f" points on thin ice.")
-                await modlog.modlog(f"{member.mention} (`{member}`) was automatically "
-                                    f"banned for receiving more than {threshold} "
-                                    f"points on thin ice.", member.guild.id, member.id, db=db)
-                await db.execute("UPDATE thin_ice SET warns_on_thin_ice = 0 WHERE guild=? AND user=?",
-                                 (member.guild.id, member.id))
-                await db.commit()
+    async with database.db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
+                          (member.guild.id,)) as cur:
+        thin_ice_role = await cur.fetchone()
+    if thin_ice_role is not None and thin_ice_role[0] is not None and thin_ice_role[0] in [role.id for role in
+                                                                                           member.roles]:
+        await database.db.execute("UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice+? WHERE guild=? AND user=?",
+                         (issued_points, member.guild.id, member.id))
+        await database.db.commit()
+        threshold = thin_ice_role[1]
+        async with database.db.execute("SELECT warns_on_thin_ice FROM thin_ice WHERE guild=? AND user=?",
+                              (member.guild.id, member.id)) as cur:
+            warns_on_thin_ice = (await cur.fetchone())[0]
+        if warns_on_thin_ice >= threshold:
+            await ban_action(member, member.guild, None, f"Automatically banned for receiving more than {threshold}"
+                                                         f" points on thin ice.")
+            await modlog.modlog(f"{member.mention} (`{member}`) was automatically "
+                                f"banned for receiving more than {threshold} "
+                                f"points on thin ice.", member.guild.id, member.id, db=db)
+            await database.db.execute("UPDATE thin_ice SET warns_on_thin_ice = 0 WHERE guild=? AND user=?",
+                             (member.guild.id, member.id))
+            await database.db.commit()
 
-        else:
-            # select all from punishments where the sum of warnings in the punishment range fits the warn_count thing
-            # this thing is a mess but should return 1 or 0 punishments if needed
-            monstersql = "SELECT *, (SELECT SUM(points) FROM warnings WHERE (warn_timespan=0 OR (" \
-                         ":now-warn_timespan)<warnings.issuedat) AND warnings.server=:guild AND user=:user AND " \
-                         "deactivated=0) pointstotal FROM auto_punishment WHERE pointstotal >= warn_count AND " \
-                         "warn_count > (pointstotal-:pointsjustgained) AND guild=:guild ORDER BY punishment_duration," \
-                         "punishment_type DESC LIMIT 1 "
-            params = {"now": datetime.now(tz=timezone.utc).timestamp(), "pointsjustgained": issued_points,
-                      "guild": member.guild.id, "user": member.id}
-            async with db.execute(monstersql, params) as cur:
-                punishment = await cur.fetchone()
-            if punishment is not None:
-                logger.debug(punishment)
-                # punishment_types = {
-                #     "ban": ban_action,
-                #     "mute": mute_action
-                # }
-                # func = punishment_types[punishment[2]]
-                duration = None if punishment[3] == 0 else timedelta(seconds=punishment[3])
-                timespan_text = "total" if punishment[4] == 0 else \
-                    f"within {humanize.precisedelta(punishment[4])}"
-                if punishment[2] == "ban":
-                    await ban_action(member, member.guild, duration,
-                                     f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
-                elif punishment[2] == "mute":
-                    await mute_action(member, duration,
-                                      f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
-                punishment_type_future_tense = {
-                    "ban": "banned",
-                    "mute": "muted"
-                }
-                punishment_text = "permanently" if duration.total_seconds() == 0 else \
-                    f"for {humanize.precisedelta(duration)}"
-                await modlog.modlog(
-                    f"{member.mention} (`{member}`) has been automatically "
-                    f"{punishment_type_future_tense[punishment[2]]}  {punishment_text} due to reaching {punishment[1]} "
-                    f"points {timespan_text}", member.guild.id, member.id, db=db)
+    else:
+        # select all from punishments where the sum of warnings in the punishment range fits the warn_count thing
+        # this thing is a mess but should return 1 or 0 punishments if needed
+        monstersql = "SELECT *, (SELECT SUM(points) FROM warnings WHERE (warn_timespan=0 OR (" \
+                     ":now-warn_timespan)<warnings.issuedat) AND warnings.server=:guild AND user=:user AND " \
+                     "deactivated=0) pointstotal FROM auto_punishment WHERE pointstotal >= warn_count AND " \
+                     "warn_count > (pointstotal-:pointsjustgained) AND guild=:guild ORDER BY punishment_duration," \
+                     "punishment_type DESC LIMIT 1 "
+        params = {"now": datetime.now(tz=timezone.utc).timestamp(), "pointsjustgained": issued_points,
+                  "guild": member.guild.id, "user": member.id}
+        async with database.db.execute(monstersql, params) as cur:
+            punishment = await cur.fetchone()
+        if punishment is not None:
+            logger.debug(punishment)
+            # punishment_types = {
+            #     "ban": ban_action,
+            #     "mute": mute_action
+            # }
+            # func = punishment_types[punishment[2]]
+            duration = None if punishment[3] == 0 else timedelta(seconds=punishment[3])
+            timespan_text = "total" if punishment[4] == 0 else \
+                f"within {humanize.precisedelta(punishment[4])}"
+            if punishment[2] == "ban":
+                await ban_action(member, member.guild, duration,
+                                 f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
+            elif punishment[2] == "mute":
+                await mute_action(member, duration,
+                                  f"Automatic punishment due to reaching {punishment[1]} points {timespan_text}")
+            punishment_type_future_tense = {
+                "ban": "banned",
+                "mute": "muted"
+            }
+            punishment_text = "permanently" if duration.total_seconds() == 0 else \
+                f"for {humanize.precisedelta(duration)}"
+            await modlog.modlog(
+                f"{member.mention} (`{member}`) has been automatically "
+                f"{punishment_type_future_tense[punishment[2]]}  {punishment_text} due to reaching {punishment[1]} "
+                f"points {timespan_text}", member.guild.id, member.id, db=db)
 
 
 class ModerationCog(commands.Cog, name="Moderation"):
@@ -222,19 +219,18 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         actuallycancelledanytasks = False
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                  "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                  (guild.id, user.id, "unban")) as cur:
-                async for row in cur:
-                    await scheduler.canceltask(row[0], db)
-                    actuallycancelledanytasks = True
-            async with db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
-                thin_ice_role = await cur.fetchone()
-            if thin_ice_role is not None and thin_ice_role[0] is not None:
-                await db.execute("REPLACE INTO thin_ice(user,guild,marked_for_thin_ice,warns_on_thin_ice) VALUES "
-                                 "(?,?,?,?)", (user.id, guild.id, True, 0))
-                await db.commit()
+        async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                              "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                              (guild.id, user.id, "unban")) as cur:
+            async for row in cur:
+                await scheduler.canceltask(row[0])
+                actuallycancelledanytasks = True
+        async with database.db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
+            thin_ice_role = await cur.fetchone()
+        if thin_ice_role is not None and thin_ice_role[0] is not None:
+            await database.db.execute("REPLACE INTO thin_ice(user,guild,marked_for_thin_ice,warns_on_thin_ice) VALUES "
+                             "(?,?,?,?)", (user.id, guild.id, True, 0))
+            await database.db.commit()
         if actuallycancelledanytasks:
             try:
                 await user.send(f"You were manually unbanned in **{guild.name}**.")
@@ -258,14 +254,13 @@ class ModerationCog(commands.Cog, name="Moderation"):
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                  "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                  (guild.id, user.id, "un_thin_ice")) as cur:
-                async for row in cur:
-                    await scheduler.canceltask(row[0], db)
-            async with db.execute("SELECT ban_appeal_link FROM server_config WHERE guild=?", (guild.id,)) as cur:
-                ban_appeal_link = await cur.fetchone()
+        async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                              "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                              (guild.id, user.id, "un_thin_ice")) as cur:
+            async for row in cur:
+                await scheduler.canceltask(row[0])
+        async with database.db.execute("SELECT ban_appeal_link FROM server_config WHERE guild=?", (guild.id,)) as cur:
+            ban_appeal_link = await cur.fetchone()
         if ban_appeal_link is not None and ban_appeal_link[0] is not None:
             try:
                 await user.send(f"You can appeal your ban from **{guild.name}** at {ban_appeal_link[0]}")
@@ -277,57 +272,54 @@ class ModerationCog(commands.Cog, name="Moderation"):
         # delete unmute events if someone manually untimed out
         if before.timeout is not None and after.timeout is None:  # if muted role manually removed
             actuallycancelledanytasks = False
-            async with aiosqlite.connect("database.sqlite") as db:
-                async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                      "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
-                                      (after.guild.id, after.id, "unmute", "refresh_mute")) as cur:
-                    async for row in cur:
-                        await scheduler.canceltask(row[0], db)
-                        actuallycancelledanytasks = True
+            async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                                  "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
+                                  (after.guild.id, after.id, "unmute", "refresh_mute")) as cur:
+                async for row in cur:
+                    await scheduler.canceltask(row[0])
+                    actuallycancelledanytasks = True
             if actuallycancelledanytasks:
                 await after.send(f"You were manually unmuted in **{after.guild.name}**.")
         # remove thin ice from records if manually removed
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?",
-                                  (after.guild.id,)) as cur:
-                thin_ice_role = await cur.fetchone()
-            if thin_ice_role is not None and thin_ice_role[0] is not None:
-                if thin_ice_role[0] in [role.id for role in before.roles] \
-                        and thin_ice_role[0] not in [role.id for role in after.roles]:  # if muted role manually removed
-                    actuallycancelledanytasks = False
-                    async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                          "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                          (after.guild.id, after.id, "un_thin_ice")) as cur:
-                        async for row in cur:
-                            await scheduler.canceltask(row[0], db)
-                            await db.execute("DELETE FROM thin_ice WHERE guild=? and user=?",
-                                             (after.guild.id, after.id))
-                            actuallycancelledanytasks = True
-                        await db.commit()
-                    if actuallycancelledanytasks:
-                        await after.send(f"Your thin ice was manually removed in **{after.guild.name}**.")
-                        await modlog.modlog(f"{after.mention} (`{after}`)'s thin ice was manually removed.",
-                                            guildid=after.guild.id, userid=after.id, db=db)
+        async with database.db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?",
+                              (after.guild.id,)) as cur:
+            thin_ice_role = await cur.fetchone()
+        if thin_ice_role is not None and thin_ice_role[0] is not None:
+            if thin_ice_role[0] in [role.id for role in before.roles] \
+                    and thin_ice_role[0] not in [role.id for role in after.roles]:  # if muted role manually removed
+                actuallycancelledanytasks = False
+                async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                                      "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                      (after.guild.id, after.id, "un_thin_ice")) as cur:
+                    async for row in cur:
+                        await scheduler.canceltask(row[0])
+                        await database.db.execute("DELETE FROM thin_ice WHERE guild=? and user=?",
+                                         (after.guild.id, after.id))
+                        actuallycancelledanytasks = True
+                    await database.db.commit()
+                if actuallycancelledanytasks:
+                    await after.send(f"Your thin ice was manually removed in **{after.guild.name}**.")
+                    await modlog.modlog(f"{after.mention} (`{after}`)'s thin ice was manually removed.",
+                                        guildid=after.guild.id, userid=after.id, db=db)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
-                                  (member.guild.id,)) as cur:
-                thin_ice_role = await cur.fetchone()
-            if thin_ice_role is not None and thin_ice_role[0] is not None:
-                async with db.execute("SELECT * from thin_ice WHERE user=? AND guild=? AND marked_for_thin_ice=1",
-                                      (member.id, member.guild.id)) as cur:
-                    user = await cur.fetchone()
-                if user is not None:
-                    await member.add_roles(discord.Object(thin_ice_role[0]))
-                    scheduletime = datetime.now(tz=timezone.utc) + timedelta(weeks=1)
-                    await scheduler.schedule(scheduletime, "un_thin_ice",
-                                             {"guild": member.guild.id, "member": member.id,
-                                              "thin_ice_role": thin_ice_role[0]})
-                    await member.send(f"Welcome back to **{member.guild.name}**. since you were just unbanned, you will"
-                                      f" have the **thin ice** role for **1 week.** If you receive {thin_ice_role[1]} "
-                                      f"point(s) in this timespan, you will be permanently banned.")
+        async with database.db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
+                              (member.guild.id,)) as cur:
+            thin_ice_role = await cur.fetchone()
+        if thin_ice_role is not None and thin_ice_role[0] is not None:
+            async with database.db.execute("SELECT * from thin_ice WHERE user=? AND guild=? AND marked_for_thin_ice=1",
+                                  (member.id, member.guild.id)) as cur:
+                user = await cur.fetchone()
+            if user is not None:
+                await member.add_roles(discord.Object(thin_ice_role[0]))
+                scheduletime = datetime.now(tz=timezone.utc) + timedelta(weeks=1)
+                await scheduler.schedule(scheduletime, "un_thin_ice",
+                                         {"guild": member.guild.id, "member": member.id,
+                                          "thin_ice_role": thin_ice_role[0]})
+                await member.send(f"Welcome back to **{member.guild.name}**. since you were just unbanned, you will"
+                                  f" have the **thin ice** role for **1 week.** If you receive {thin_ice_role[1]} "
+                                  f"point(s) in this timespan, you will be permanently banned.")
 
     @commands.command(aliases=["setmodrole", "addmodrole", "moderatorrole"])
     @commands.has_guild_permissions(manage_guild=True)
@@ -555,23 +547,22 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if not members:
             await ctx.reply("❌ members is a required argument that is missing.")
             return
-        async with aiosqlite.connect("database.sqlite") as db:
-            for member in members:
-                # cancel all unmute events
-                async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                      "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
-                                      (ctx.guild.id, member.id, "unmute", "refresh_mute")) as cur:
-                    async for row in cur:
-                        await scheduler.canceltask(row[0], db)
+        for member in members:
+            # cancel all unmute events
+            async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                                  "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
+                                  (ctx.guild.id, member.id, "unmute", "refresh_mute")) as cur:
+                async for row in cur:
+                    await scheduler.canceltask(row[0])
 
-                await member.edit(timeout=None)
-                await ctx.reply(f"✔️ Unmuted {member.mention}")
-                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
-                                    f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id, db=db)
-                try:
-                    await member.send(f"You were manually unmuted in **{ctx.guild.name}**.")
-                except (discord.Forbidden, discord.HTTPException, AttributeError):
-                    logger.debug("pass")
+            await member.edit(timeout=None)
+            await ctx.reply(f"✔️ Unmuted {member.mention}")
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
+                                f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id, db=db)
+            try:
+                await member.send(f"You were manually unmuted in **{ctx.guild.name}**.")
+            except (discord.Forbidden, discord.HTTPException, AttributeError):
+                logger.debug("pass")
 
     @commands.command(aliases=["ub"])
     @commands.bot_has_permissions(ban_members=True)
@@ -587,25 +578,24 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await ctx.reply("❌ members is a required argument that is missing.")
             return
         bans = [ban.user for ban in await ctx.guild.bans()]
-        async with aiosqlite.connect("database.sqlite") as db:
-            for member in members:
-                if member not in bans:
-                    await ctx.reply(f"❌ {member.mention} isn't banned!")
-                    continue
-                await ctx.guild.unban(member)
-                await ctx.reply(f"✔️ Unbanned {member.mention}")
-                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
-                                    f"unbanned {member.mention} (`{member}`)",
-                                    ctx.guild.id, member.id, ctx.author.id, db=db)
-                try:
-                    await member.send(f"You were manually unbanned in **{ctx.guild.name}**.")
-                except (discord.Forbidden, discord.HTTPException, AttributeError):
-                    logger.debug("pass")
-                async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                      "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                      (ctx.guild.id, member.id, "unban")) as cur:
-                    async for row in cur:
-                        await scheduler.canceltask(row[0], db)
+        for member in members:
+            if member not in bans:
+                await ctx.reply(f"❌ {member.mention} isn't banned!")
+                continue
+            await ctx.guild.unban(member)
+            await ctx.reply(f"✔️ Unbanned {member.mention}")
+            await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
+                                f"unbanned {member.mention} (`{member}`)",
+                                ctx.guild.id, member.id, ctx.author.id, db=db)
+            try:
+                await member.send(f"You were manually unbanned in **{ctx.guild.name}**.")
+            except (discord.Forbidden, discord.HTTPException, AttributeError):
+                logger.debug("pass")
+            async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
+                                  "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                  (ctx.guild.id, member.id, "unban")) as cur:
+                async for row in cur:
+                    await scheduler.canceltask(row[0])
 
     @commands.command(aliases=["deletewarn", "removewarn", "dwarn", "cancelwarn", "dw"])
     @mod_only()
@@ -619,44 +609,43 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if not warn_ids:
             await ctx.reply(f"❌ Specify a warn ID.")
         for warn_id in warn_ids:
-            async with aiosqlite.connect("database.sqlite") as db:
-                async with db.execute(
-                        "SELECT user, points, reason FROM warnings WHERE id=? AND server=? AND deactivated=0",
-                        (warn_id, ctx.guild.id)) as cur:
-                    warn = await cur.fetchone()
-                if warn is None:
-                    await ctx.reply(
-                        f"❌ Failed to remove warning. Does warn #{warn_id} exist and is it from this server?")
+            async with database.db.execute(
+                    "SELECT user, points, reason FROM warnings WHERE id=? AND server=? AND deactivated=0",
+                    (warn_id, ctx.guild.id)) as cur:
+                warn = await cur.fetchone()
+            if warn is None:
+                await ctx.reply(
+                    f"❌ Failed to remove warning. Does warn #{warn_id} exist and is it from this server?")
+            else:
+                await database.db.execute("UPDATE warnings SET deactivated=1 WHERE id=?", (warn_id,))
+                # update warns on thin ice
+                member = await ctx.guild.fetch_member(warn[0])
+                points = warn[1]
+                async with database.db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
+                                      (member.guild.id,)) as cur:
+                    thin_ice_role = await cur.fetchone()
+                if thin_ice_role is not None and thin_ice_role[0] is not None \
+                        and thin_ice_role[0] in [role.id for role in member.roles]:
+                    await database.db.execute(
+                        "UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice-? WHERE guild=? AND user=?",
+                        (points, member.guild.id, member.id))
+                await database.db.commit()
+                user = await self.bot.fetch_user(warn[0])
+                if user:
+                    await ctx.reply(f"✔️ Removed warning #{warn_id} from {user.mention} (`{warn[2]}`)")
+                    await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
+                                        f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
+                                        modid=ctx.author.id, userid=user.id, db=db)
+                    try:
+                        await user.send(f"A warn you received in {ctx.guild.name} for was deleted. "
+                                        f"(`{warn[2]}`)")
+                    except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
+                        logger.debug("pass;" + str(e))
                 else:
-                    await db.execute("UPDATE warnings SET deactivated=1 WHERE id=?", (warn_id,))
-                    # update warns on thin ice
-                    member = await ctx.guild.fetch_member(warn[0])
-                    points = warn[1]
-                    async with db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
-                                          (member.guild.id,)) as cur:
-                        thin_ice_role = await cur.fetchone()
-                    if thin_ice_role is not None and thin_ice_role[0] is not None \
-                            and thin_ice_role[0] in [role.id for role in member.roles]:
-                        await db.execute(
-                            "UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice-? WHERE guild=? AND user=?",
-                            (points, member.guild.id, member.id))
-                    await db.commit()
-                    user = await self.bot.fetch_user(warn[0])
-                    if user:
-                        await ctx.reply(f"✔️ Removed warning #{warn_id} from {user.mention} (`{warn[2]}`)")
-                        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
-                                            f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
-                                            modid=ctx.author.id, userid=user.id, db=db)
-                        try:
-                            await user.send(f"A warn you received in {ctx.guild.name} for was deleted. "
-                                            f"(`{warn[2]}`)")
-                        except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
-                            logger.debug("pass;" + str(e))
-                    else:
-                        await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
-                        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
-                                            f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
-                                            modid=ctx.author.id, userid=user.id, db=db)
+                    await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
+                    await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
+                                        f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
+                                        modid=ctx.author.id, userid=user.id, db=db)
 
     @commands.command(aliases=["restorewarn", "undeletewarn", "udw"])
     @mod_only()
@@ -667,33 +656,32 @@ class ModerationCog(commands.Cog, name="Moderation"):
         :param ctx: discord context
         :param warn_id: a warn ID to restore. get the ID of a warn with m.warns.
         """
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute(
-                    "SELECT user, points, reason FROM warnings WHERE id=? AND server=? AND deactivated=0",
-                    (warn_id, ctx.guild.id)) as cur:
-                warn = await cur.fetchone()
-            if warn is None:
-                await ctx.reply(
-                    f"❌ Failed to unremove warning. Does warn #{warn_id} exist and is it from this server?")
+        async with database.db.execute(
+                "SELECT user, points, reason FROM warnings WHERE id=? AND server=? AND deactivated=0",
+                (warn_id, ctx.guild.id)) as cur:
+            warn = await cur.fetchone()
+        if warn is None:
+            await ctx.reply(
+                f"❌ Failed to unremove warning. Does warn #{warn_id} exist and is it from this server?")
+        else:
+            await database.db.execute("UPDATE warnings SET deactivated=1 WHERE id=?", (warn_id,))
+            await database.db.commit()
+            user = await self.bot.fetch_user(warn[0])
+            if user:
+                await ctx.reply(f"✔️ Restored warning #{warn_id} from {user.mention} (`{warn[2]}`)")
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) restored warning #{warn_id} from "
+                                    f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
+                                    modid=ctx.author.id, userid=user.id, db=db)
+                try:
+                    await user.send(f"A previously deleted warn you received in {ctx.guild.name} was restored. "
+                                    f"(`{warn[2]}`)")
+                except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
+                    logger.debug("pass;" + str(e))
             else:
-                await db.execute("UPDATE warnings SET deactivated=1 WHERE id=?", (warn_id,))
-                await db.commit()
-                user = await self.bot.fetch_user(warn[0])
-                if user:
-                    await ctx.reply(f"✔️ Restored warning #{warn_id} from {user.mention} (`{warn[2]}`)")
-                    await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) restored warning #{warn_id} from "
-                                        f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
-                                        modid=ctx.author.id, userid=user.id, db=db)
-                    try:
-                        await user.send(f"A previously deleted warn you received in {ctx.guild.name} was restored. "
-                                        f"(`{warn[2]}`)")
-                    except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
-                        logger.debug("pass;" + str(e))
-                else:
-                    await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
-                    await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
-                                        f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
-                                        modid=ctx.author.id, userid=user.id, db=db)
+                await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
+                                    f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
+                                    modid=ctx.author.id, userid=user.id, db=db)
 
     @commands.command(aliases=["w", "bite"])
     @mod_only()
@@ -712,12 +700,11 @@ class ModerationCog(commands.Cog, name="Moderation"):
             points = round(points, 1)
         now = datetime.now(tz=timezone.utc)
         for member in members:
-            async with aiosqlite.connect("database.sqlite") as db:
-                await db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
-                                 "VALUES (?, ?, ?, ?, ?, ?)",
-                                 (ctx.guild.id, member.id, ctx.author.id,
-                                  int(now.timestamp()), reason, points))
-                await db.commit()
+            await database.db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
+                             "VALUES (?, ?, ?, ?, ?, ?)",
+                             (ctx.guild.id, member.id, ctx.author.id,
+                              int(now.timestamp()), reason, points))
+            await database.db.commit()
             await ctx.reply(f"Warned {member.mention} with {points} infraction point{'' if points == 1 else 's'} for: "
                             f"`{reason}`")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
@@ -765,12 +752,11 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if points > 1:
             points = round(points, 1)
         now = datetime(day=day, month=month, year=year, tzinfo=timezone.utc)
-        async with aiosqlite.connect("database.sqlite") as db:
-            await db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
-                             "VALUES (?, ?, ?, ?, ?, ?)",
-                             (ctx.guild.id, member.id, ctx.author.id,
-                              int(now.timestamp()), reason, points))
-            await db.commit()
+        await database.db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
+                         "VALUES (?, ?, ?, ?, ?, ?)",
+                         (ctx.guild.id, member.id, ctx.author.id,
+                          int(now.timestamp()), reason, points))
+        await database.db.commit()
         await ctx.reply(
             f"Created warn on <t:{int(now.timestamp())}:D> for {member.mention} with {points} infraction "
             f"point{'' if points == 1 else 's'} for: `{reason}`")
@@ -802,43 +788,42 @@ class ModerationCog(commands.Cog, name="Moderation"):
         async with ctx.channel.typing():
             embed = discord.Embed(title=f"Warns for {member.display_name}: Page {page}", color=discord.Color(0xB565D9),
                                   description=member.mention)
-            async with aiosqlite.connect("database.sqlite") as db:
-                deactivated_text = "" if show_deleted else "AND deactivated=0"
-                async with db.execute(f"SELECT id, issuedby, issuedat, reason, deactivated, points FROM warnings "
-                                      f"WHERE user=? AND server=? {deactivated_text} ORDER BY issuedat DESC "
-                                      f"LIMIT 25 OFFSET ?",
-                                      (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
-                    # now = datetime.now(tz=timezone.utc)
-                    async for warn in cursor:
-                        issuedby = await self.bot.fetch_user(warn[1])
-                        issuedat = warn[2]
-                        reason = warn[3]
-                        points = warn[5]
-                        add_long_field(embed,
-                                       name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
-                                            f"{' (Deleted)' if warn[4] else ''}",
-                                       value=
-                                       f"Reason: {reason}\n"
-                                       f"Issued by: {issuedby.mention}\n"
-                                       f"Issued <t:{int(issuedat)}:f> "
-                                       f"(<t:{int(issuedat)}:R>)", inline=False)
-                async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
-                                      (member.id, ctx.guild.id)) as cur:
-                    warncount = (await cur.fetchone())[0]
-                async with db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=1",
-                                      (member.id, ctx.guild.id)) as cur:
-                    delwarncount = (await cur.fetchone())[0]
-                async with db.execute("SELECT sum(points) FROM warnings WHERE user=? AND server=? AND deactivated=0",
-                                      (member.id, ctx.guild.id)) as cur:
-                    points = (await cur.fetchone())[0]
-                    if points is None:
-                        points = 0
-                embed.description += f" has {'%g' % points} point{'' if points == 1 else 's'}, " \
-                                     f"{warncount} warn{'' if warncount == 1 else 's'} and " \
-                                     f"{delwarncount} deleted warn{'' if delwarncount == 1 else 's'}"
-                if not embed.fields:
-                    embed.add_field(name="No Results", value="Try a different page # or show deleted warns.",
-                                    inline=False)
+            deactivated_text = "" if show_deleted else "AND deactivated=0"
+            async with database.db.execute(f"SELECT id, issuedby, issuedat, reason, deactivated, points FROM warnings "
+                                  f"WHERE user=? AND server=? {deactivated_text} ORDER BY issuedat DESC "
+                                  f"LIMIT 25 OFFSET ?",
+                                  (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
+                # now = datetime.now(tz=timezone.utc)
+                async for warn in cursor:
+                    issuedby = await self.bot.fetch_user(warn[1])
+                    issuedat = warn[2]
+                    reason = warn[3]
+                    points = warn[5]
+                    add_long_field(embed,
+                                   name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
+                                        f"{' (Deleted)' if warn[4] else ''}",
+                                   value=
+                                   f"Reason: {reason}\n"
+                                   f"Issued by: {issuedby.mention}\n"
+                                   f"Issued <t:{int(issuedat)}:f> "
+                                   f"(<t:{int(issuedat)}:R>)", inline=False)
+            async with database.db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
+                                  (member.id, ctx.guild.id)) as cur:
+                warncount = (await cur.fetchone())[0]
+            async with database.db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=1",
+                                  (member.id, ctx.guild.id)) as cur:
+                delwarncount = (await cur.fetchone())[0]
+            async with database.db.execute("SELECT sum(points) FROM warnings WHERE user=? AND server=? AND deactivated=0",
+                                  (member.id, ctx.guild.id)) as cur:
+                points = (await cur.fetchone())[0]
+                if points is None:
+                    points = 0
+            embed.description += f" has {'%g' % points} point{'' if points == 1 else 's'}, " \
+                                 f"{warncount} warn{'' if warncount == 1 else 's'} and " \
+                                 f"{delwarncount} deleted warn{'' if delwarncount == 1 else 's'}"
+            if not embed.fields:
+                embed.add_field(name="No Results", value="Try a different page # or show deleted warns.",
+                                inline=False)
             for e in split_embed(embed):
                 await ctx.reply(embed=e)
 
@@ -859,33 +844,32 @@ class ModerationCog(commands.Cog, name="Moderation"):
         async with ctx.channel.typing():
             embed = discord.Embed(title=f"Modlogs for {member.display_name}: Page {page}",
                                   color=discord.Color(0xB565D9), description=member.mention)
-            async with aiosqlite.connect("database.sqlite") as db:
-                async with db.execute(f"SELECT text,datetime,user,moderator FROM modlog "
-                                      f"WHERE {'moderator' if viewmodactions else 'user'}=? AND guild=? "
-                                      f"ORDER BY datetime DESC LIMIT 10 OFFSET ?",
-                                      (member.id, ctx.guild.id, (page - 1) * 10)) as cursor:
-                    now = datetime.now(tz=timezone.utc)
-                    async for log in cursor:
-                        if log[2]:
-                            user: typing.Optional[discord.User] = await self.bot.fetch_user(log[2])
-                        else:
-                            user = None
-                        if log[3]:
-                            moderator: typing.Optional[discord.User] = await self.bot.fetch_user(log[3])
-                        else:
-                            moderator = None
-                        issuedat = log[1]
-                        text = log[0]
-                        add_long_field(embed,
-                                       name=f"<t:{int(issuedat)}:f> (<t:{int(issuedat)}:R>)",
-                                       value=
-                                       text + ("\n\n" if user or moderator else "") +
-                                       (f"**User**: {user.mention}\n" if user else "") +
-                                       (f"**Moderator**: {moderator.mention}\n" if moderator else ""), inline=False)
-                    if not embed.fields:
-                        embed.add_field(name="No Results", value="Try a different page #.", inline=False)
-                    for e in split_embed(embed):
-                        await ctx.reply(embed=e)
+            async with database.db.execute(f"SELECT text,datetime,user,moderator FROM modlog "
+                                  f"WHERE {'moderator' if viewmodactions else 'user'}=? AND guild=? "
+                                  f"ORDER BY datetime DESC LIMIT 10 OFFSET ?",
+                                  (member.id, ctx.guild.id, (page - 1) * 10)) as cursor:
+                now = datetime.now(tz=timezone.utc)
+                async for log in cursor:
+                    if log[2]:
+                        user: typing.Optional[discord.User] = await self.bot.fetch_user(log[2])
+                    else:
+                        user = None
+                    if log[3]:
+                        moderator: typing.Optional[discord.User] = await self.bot.fetch_user(log[3])
+                    else:
+                        moderator = None
+                    issuedat = log[1]
+                    text = log[0]
+                    add_long_field(embed,
+                                   name=f"<t:{int(issuedat)}:f> (<t:{int(issuedat)}:R>)",
+                                   value=
+                                   text + ("\n\n" if user or moderator else "") +
+                                   (f"**User**: {user.mention}\n" if user else "") +
+                                   (f"**Moderator**: {moderator.mention}\n" if moderator else ""), inline=False)
+                if not embed.fields:
+                    embed.add_field(name="No Results", value="Try a different page #.", inline=False)
+                for e in split_embed(embed):
+                    await ctx.reply(embed=e)
 
     def autopunishment_to_text(self, point_count, point_timespan, punishment_type, punishment_duration):
         punishment_type_future_tense = {
@@ -922,13 +906,12 @@ class ModerationCog(commands.Cog, name="Moderation"):
         await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) added "
                             f"auto-punishment: {ptext}", ctx.guild.id, modid=ctx.author.id)
         await ctx.reply(ptext)
-        async with aiosqlite.connect("database.sqlite") as db:
-            await db.execute(
-                "REPLACE INTO auto_punishment(guild,warn_count,punishment_type,punishment_duration,warn_timespan) "
-                "VALUES (?,?,?,?,?)",
-                (ctx.guild.id, point_count, punishment_type, punishment_duration.total_seconds(),
-                 point_timespan.total_seconds()))
-            await db.commit()
+        await database.db.execute(
+            "REPLACE INTO auto_punishment(guild,warn_count,punishment_type,punishment_duration,warn_timespan) "
+            "VALUES (?,?,?,?,?)",
+            (ctx.guild.id, point_count, punishment_type, punishment_duration.total_seconds(),
+             point_timespan.total_seconds()))
+        await database.db.commit()
 
     @commands.command(aliases=["removeap", "delap", "deleteautopunishment", "rap", "dap"])
     @commands.guild_only()
@@ -941,10 +924,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
         :param point_count: the point count of the auto-punishment to remove
         """
         assert point_count > 0
-        async with aiosqlite.connect("database.sqlite") as db:
-            cur = await db.execute("DELETE FROM auto_punishment WHERE warn_count=? AND guild=?",
-                                   (point_count, ctx.guild.id))
-            await db.commit()
+        cur = await database.db.execute("DELETE FROM auto_punishment WHERE warn_count=? AND guild=?",
+                               (point_count, ctx.guild.id))
+        await database.db.commit()
         if cur.rowcount > 0:
             await ctx.reply(f"✔️ Removed rule for {point_count} point{'' if point_count == 1 else 's'}.")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed "
@@ -960,16 +942,15 @@ class ModerationCog(commands.Cog, name="Moderation"):
         Lists the auto-punishments for the server.
         """
         embed = discord.Embed(title=f"Auto-punishment rules for {ctx.guild.name}", color=discord.Color(0xB565D9))
-        async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT * FROM auto_punishment WHERE guild=? ORDER BY warn_count DESC LIMIT 25",
-                                  (ctx.guild.id,)) as cursor:
-                async for p in cursor:
-                    value = self.autopunishment_to_text(p[1], timedelta(seconds=p[4]), p[2], timedelta(seconds=p[3]))
-                    embed.add_field(name=f"Rule for {p[1]} point{'' if p[1] == 1 else 's'}", value=value, inline=False)
-                if not embed.fields:
-                    embed.add_field(name="No Auto-punishment Rules", value="This server has no auto-punishments. "
-                                                                           "Add some with m.addautopunishment.",
-                                    inline=False)
+        async with database.db.execute("SELECT * FROM auto_punishment WHERE guild=? ORDER BY warn_count DESC LIMIT 25",
+                              (ctx.guild.id,)) as cursor:
+            async for p in cursor:
+                value = self.autopunishment_to_text(p[1], timedelta(seconds=p[4]), p[2], timedelta(seconds=p[3]))
+                embed.add_field(name=f"Rule for {p[1]} point{'' if p[1] == 1 else 's'}", value=value, inline=False)
+            if not embed.fields:
+                embed.add_field(name="No Auto-punishment Rules", value="This server has no auto-punishments. "
+                                                                       "Add some with m.addautopunishment.",
+                                inline=False)
         await ctx.reply(embed=embed)
 
     @commands.command()

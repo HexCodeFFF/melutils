@@ -9,7 +9,7 @@ import moderation
 import modlog
 import scheduler
 from clogs import logger
-
+import database
 
 class BirthdayCog(commands.Cog, name="Birthday Commands"):
     def __init__(self, bot):
@@ -33,19 +33,18 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
         except ValueError as e:
             await ctx.reply(str(e))
             return
-        async with aiosqlite.connect("database.sqlite") as db:
-            # cancel all existing birthday events
-            async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.user\")=? "
-                                  "AND eventtype=?",
-                                  (ctx.author.id, "birthday")) as cur:
-                async for event in cur:
-                    await scheduler.canceltask(event[0], db)
-            # insert birthday into db
-            await db.execute(
-                "REPLACE INTO birthdays(user,birthday) "
-                "VALUES (?,?)",
-                (ctx.author.id, birthday.timestamp()))
-            await db.commit()
+        # cancel all existing birthday events
+        async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.user\")=? "
+                              "AND eventtype=?",
+                              (ctx.author.id, "birthday")) as cur:
+            async for event in cur:
+                await scheduler.canceltask(event[0])
+        # insert birthday into db
+        await database.db.execute(
+            "REPLACE INTO birthdays(user,birthday) "
+            "VALUES (?,?)",
+            (ctx.author.id, birthday.timestamp()))
+        await database.db.commit()
         # calculate next birthday
         now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=tz)))
         thisyear = now.year
@@ -102,19 +101,18 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
         except ValueError as e:
             await ctx.reply(str(e))
             return
-        async with aiosqlite.connect("database.sqlite") as db:
-            # cancel all existing birthday events
-            async with db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.user\")=? "
-                                  "AND eventtype=?",
-                                  (user.id, "birthday")) as cur:
-                async for event in cur:
-                    await scheduler.canceltask(event[0], db)
-            # insert birthday into db
-            await db.execute(
-                "REPLACE INTO birthdays(user,birthday) "
-                "VALUES (?,?)",
-                (user.id, birthday.timestamp()))
-            await db.commit()
+        # cancel all existing birthday events
+        async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.user\")=? "
+                              "AND eventtype=?",
+                              (user.id, "birthday")) as cur:
+            async for event in cur:
+                await scheduler.canceltask(event[0])
+        # insert birthday into db
+        await database.db.execute(
+            "REPLACE INTO birthdays(user,birthday) "
+            "VALUES (?,?)",
+            (user.id, birthday.timestamp()))
+        await database.db.commit()
         # calculate next birthday
         now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=tz)))
         thisyear = now.year
