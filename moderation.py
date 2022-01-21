@@ -152,7 +152,7 @@ async def on_warn(member: discord.Member, issued_points: float):
                                                          f" points on thin ice.")
             await modlog.modlog(f"{member.mention} (`{member}`) was automatically "
                                 f"banned for receiving more than {threshold} "
-                                f"points on thin ice.", member.guild.id, member.id, db=db)
+                                f"points on thin ice.", member.guild.id, member.id)
             await database.db.execute("UPDATE thin_ice SET warns_on_thin_ice = 0 WHERE guild=? AND user=?",
                              (member.guild.id, member.id))
             await database.db.commit()
@@ -194,7 +194,7 @@ async def on_warn(member: discord.Member, issued_points: float):
             await modlog.modlog(
                 f"{member.mention} (`{member}`) has been automatically "
                 f"{punishment_type_future_tense[punishment[2]]}  {punishment_text} due to reaching {punishment[1]} "
-                f"points {timespan_text}", member.guild.id, member.id, db=db)
+                f"points {timespan_text}", member.guild.id, member.id)
 
 
 class ModerationCog(commands.Cog, name="Moderation"):
@@ -300,7 +300,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 if actuallycancelledanytasks:
                     await after.send(f"Your thin ice was manually removed in **{after.guild.name}**.")
                     await modlog.modlog(f"{after.mention} (`{after}`)'s thin ice was manually removed.",
-                                        guildid=after.guild.id, userid=after.id, db=db)
+                                        guildid=after.guild.id, userid=after.id)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -558,7 +558,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await member.edit(timeout=None)
             await ctx.reply(f"✔️ Unmuted {member.mention}")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
-                                f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id, db=db)
+                                f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id)
             try:
                 await member.send(f"You were manually unmuted in **{ctx.guild.name}**.")
             except (discord.Forbidden, discord.HTTPException, AttributeError):
@@ -586,7 +586,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await ctx.reply(f"✔️ Unbanned {member.mention}")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
                                 f"unbanned {member.mention} (`{member}`)",
-                                ctx.guild.id, member.id, ctx.author.id, db=db)
+                                ctx.guild.id, member.id, ctx.author.id)
             try:
                 await member.send(f"You were manually unbanned in **{ctx.guild.name}**.")
             except (discord.Forbidden, discord.HTTPException, AttributeError):
@@ -635,7 +635,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                     await ctx.reply(f"✔️ Removed warning #{warn_id} from {user.mention} (`{warn[2]}`)")
                     await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
                                         f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
-                                        modid=ctx.author.id, userid=user.id, db=db)
+                                        modid=ctx.author.id, userid=user.id)
                     try:
                         await user.send(f"A warn you received in {ctx.guild.name} for was deleted. "
                                         f"(`{warn[2]}`)")
@@ -645,7 +645,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                     await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
                     await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
                                         f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
-                                        modid=ctx.author.id, userid=user.id, db=db)
+                                        modid=ctx.author.id, userid=user.id)
 
     @commands.command(aliases=["restorewarn", "undeletewarn", "udw"])
     @mod_only()
@@ -671,7 +671,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 await ctx.reply(f"✔️ Restored warning #{warn_id} from {user.mention} (`{warn[2]}`)")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) restored warning #{warn_id} from "
                                     f"{user.mention} ({user}). Warn text was `{warn[2]}`", ctx.guild.id,
-                                    modid=ctx.author.id, userid=user.id, db=db)
+                                    modid=ctx.author.id, userid=user.id)
                 try:
                     await user.send(f"A previously deleted warn you received in {ctx.guild.name} was restored. "
                                     f"(`{warn[2]}`)")
@@ -681,7 +681,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 await ctx.reply(f"✔️ Removed warning #{warn_id} from <@{warn[0]}> (`{warn[2]}`)")
                 await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) removed warning #{warn_id} from "
                                     f"{user.mention}. Warn text was `{warn[2]}`", ctx.guild.id,
-                                    modid=ctx.author.id, userid=user.id, db=db)
+                                    modid=ctx.author.id, userid=user.id)
 
     @commands.command(aliases=["w", "bite"])
     @mod_only()
