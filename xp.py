@@ -87,9 +87,9 @@ class ExperienceCog(commands.Cog):
         :param userorchannel: user or channel to disallow gaining XP.
         """
         async with aiosqlite.connect("database.sqlite") as db:
-            async with db.execute("SELECT exists(SELECT 1 FROM guild_xp_exclusions WHERE guild=? AND userorchannel=?)",
+            async with db.execute("SELECT 1 FROM guild_xp_exclusions WHERE guild=? AND userorchannel=?",
                                   (ctx.guild.id, ctx.author.id)) as cur:
-                if (await cur.fetchone())[0] > 0:
+                if await cur.fetchone() is not None:
                     exists = True
                     await db.execute("DELETE FROM guild_xp_exclusions WHERE guild=? AND userorchannel=?",
                                      (ctx.guild.id, ctx.author.id))
@@ -137,7 +137,7 @@ class ExperienceCog(commands.Cog):
     # TODO: serverwide disable or enable
     # TODO: serverwide reset
     # TODO: user reset?
-    # command here
+    # TODO: xp info command
 
 
 '''
