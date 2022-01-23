@@ -19,7 +19,7 @@ async def modlog(msg: str, guildid: int, userid: typing.Optional[int] = None, mo
     await database.db.execute("INSERT INTO modlog(guild,user,moderator,text,datetime) VALUES (?,?,?,?,?)",
                               (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
     await database.db.commit()
-    async with database.db.execute("SELECT log_channel,bulk_log_channel FROM xp_change_per_level WHERE guild=?",
+    async with database.db.execute("SELECT log_channel,bulk_log_channel FROM server_config WHERE guild=?",
                                    (guildid,)) as cur:
         modlogchannel = await cur.fetchone()
     if modlogchannel is None or modlogchannel[0] is None:
