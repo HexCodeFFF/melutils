@@ -61,7 +61,7 @@ async def update_server_config(server: int, config: str, value):
     async with database.db.execute("SELECT COUNT(guild) FROM server_config WHERE guild=?", (server,)) as cur:
         guilds = await cur.fetchone()
     if guilds[0]:  # if there already is a row for this guild
-        await database.db.execute(f"UPDATE server_config SET {config} = ? WHERE guild=?", (value, server))
+        await database.db.execute(f"UPDATE server_config SET {config} = ? WHERE guild=?" , (value, server))
     else:  # if not, make one
         await database.db.execute(f"INSERT INTO server_config(guild, {config}) VALUES (?, ?)", (server, value))
     await database.db.commit()
