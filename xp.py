@@ -4,13 +4,13 @@ import typing
 
 import aiosqlite
 import nextcord as discord
+import si_prefix
 from nextcord.ext import commands
 from nextcord.ext.commands import BucketType
-import si_prefix
 
+import database
 import moderation
 from clogs import logger
-import database
 
 
 def progress_bar(n: typing.Union[int, float], tot: typing.Union[int, float], cols: int = 20, border: str = "") -> str:
@@ -201,7 +201,7 @@ class ExperienceCog(commands.Cog):
         embed = discord.Embed(color=discord.Color(0x15fe02))
         embed.set_author(name=user.display_name, icon_url=user.avatar.url)
         embed.set_footer(text=ctx.guild.name, icon_url=ctx.guild.icon.url)
-        embed.add_field(name="XP", value=f"{exp:,}", inline=True)
+        embed.add_field(name="XP", value=f"{exp:,%.g}", inline=True)
         embed.add_field(name="Level", value=f"{level}", inline=True)
         embed.add_field(name="Rank", value=f"{rank}", inline=True)
         embed.add_field(name="Progress To Next Level", value=f"{si_prefix.si_format(xp_for_current_level)} `{bar}` "
@@ -209,7 +209,37 @@ class ExperienceCog(commands.Cog):
                         inline=False)
 
         await ctx.reply(embed=embed)
-    # TODO: leaderboard command
+
+    @commands.command()
+    async def leaderboard(self, ctx: commands.Context, page: int = 1):
+        assert page > 0, "Page must be 1 or more"
+        async with database.db.execute(f"SELECT user, experience, RANK() OVER (ORDER BY experience DESC) "
+                                       f"experience_rank FROM experience WHERE guild = ? "
+                                       f"LIMIT 10 OFFSET {(page - 1) * 10}",
+                                       (ctx.guild.id,)) as cur:
+            rows = await cur.fetchall()
+        embed = discord.Embed(color=discord.Color(0x15fe02), title=ctx.guild.name,
+                              description=f"Page {page}")
+        embed.set_thumbnail(url=ctx.guild.icon.url)
+        if rows:
+            async with database.db.execute("SELECT xp_change_per_level FROM server_config WHERE guild=?",
+                                           (ctx.guild.id,)) as cur:
+                change_per_level = await cur.fetchone()
+            if change_per_level is None:
+                # default
+                change_per_level = 30
+            else:
+                change_per_level = change_per_level[0]
+            text = ""
+            for row in rows:
+                user, experience, rank = row
+                text += f"**#{rank}** <@{user}>\n**{si_prefix.si_format(experience)}** XP |" \
+                        f" Level **{xp_to_level(experience, change_per_level)}**\n"
+            embed.add_field(name="Leaderboard", value=text)
+        else:
+            embed.add_field(name="No users found!",
+                            value="Try going back a page and making sure experience is enabled in this server")
+        await ctx.reply(embed=embed)
     # TODO: serverwide disable or enable
     # TODO: serverwide reset
     # TODO: user reset?
