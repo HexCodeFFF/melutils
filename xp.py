@@ -1,6 +1,10 @@
+import datetime
+import itertools
 import math
+import operator
 import sys
 import typing
+from collections import defaultdict
 
 import aiosqlite
 import nextcord as discord
@@ -46,6 +50,45 @@ def xp_to_level(xp: float, xp_per_level: float):
                       # fix float imprecision so like 3.999999999999 doesnt floor to 3
                       # theoretically possible for it to fuck up like at level 100000000000 but i do not care
                       + sys.float_info.epsilon)
+
+
+async def sort_messages_in_channel(channel: discord.abc.Messageable):
+    out = defaultdict(list)
+    try:
+        async for msg in channel.history(limit=None, oldest_first=True):
+            if not msg.author.bot:
+                out[msg.author.id].append(msg.created_at)
+    except discord.Forbidden:
+        pass
+    return out
+
+
+dict_of_lists = dict[typing.Any, list]
+
+
+def lodoltdol(inp: list[dict_of_lists]) -> dict_of_lists:
+    # list_of_dicts_of_lists_to_dict_of_lists
+    # https://stackoverflow.com/a/54108746/9044183
+    # initialise defaultdict of lists
+    dd = defaultdict(list)
+
+    # iterate dictionary items
+    dict_items = map(operator.methodcaller('items'), inp)
+    for k, v in itertools.chain.from_iterable(dict_items):
+        dd[k].extend(v)
+    return dd
+
+
+def list_of_datetimes_to_xp(inp: list[datetime.datetime], time_between_xp: float) -> int:
+    xp = 0
+    inp = sorted(inp)
+    # just some random old date
+    last_xp_gain = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
+    for msg in inp:
+        if (msg - last_xp_gain).total_seconds() >= time_between_xp:
+            xp += 1
+            last_xp_gain = msg
+    return xp
 
 
 class ExperienceCog(commands.Cog):
@@ -112,7 +155,67 @@ class ExperienceCog(commands.Cog):
         recalculate guild's XP from message history
         """
         # TODO: implement
-        raise NotImplementedError
+        async with ctx.typing():
+            # get text channels and active threads
+            channels = ctx.guild.text_channels + ctx.guild.threads
+            # GATHER CAN CAUSE 429s NEVER AGAIN
+            # prvget = [channel.archived_threads(private=True, joined=True, limit=None).flatten() for channel in
+            #           ctx.guild.text_channels]
+            # pubget = [channel.archived_threads(limit=None).flatten() for channel in
+            #           ctx.guild.text_channels]
+            # list_of_lists_of_athreads = await asyncio.gather(*(prvget + pubget), return_exceptions=True)
+            # # some might error but just ignore them frfr
+            # channels += list(sum([l for l in list_of_lists_of_athreads if isinstance(l, list)], []))
+            for channel in ctx.guild.text_channels:
+                try:
+                    channels += await channel.archived_threads(private=True, joined=True, limit=None).flatten()
+                except discord.HTTPException:
+                    pass
+                try:
+                    channels += await channel.archived_threads(limit=None).flatten()
+                except discord.HTTPException:
+                    pass
+            # get exclusions and exempt them from scanning
+            async with database.db.execute("SELECT userorchannel FROM guild_xp_exclusions WHERE guild=? "
+                                           "AND mod_set=true", (ctx.guild.id,)) as cur:
+                excl = await cur.fetchall()
+            # flatten
+            excl = list(sum(excl, ()))
+            # remove all exclusions
+            channels = [ch for ch in channels if ch.id not in excl]
+        # search all the channels async at once into a list of datetimes of message sent, since thats all we care about
+        msg = await ctx.reply(f"Scanning {len(channels)} channels... this will take a while...")
+        async with ctx.typing():
+            # gather can cause 429s
+            # res = await asyncio.gather(*[sort_messages_in_channel(ch) for ch in channels])
+            res = [await sort_messages_in_channel(ch) for ch in channels]
+        await msg.edit(content="Gathered messages, calculating and setting XP...")
+        async with ctx.typing():
+            async with database.db.execute("SELECT time_between_xp FROM server_config WHERE guild=?",
+                                           (ctx.guild.id,)) as cur:
+                cur: aiosqlite.Cursor
+                timeout = await cur.fetchone()
+            if timeout is None:
+                timeout = 60
+            else:
+                timeout = timeout[0]
+            # flatten indivitual lists from each channel into one big dict
+            res = lodoltdol(res)
+            # calculate xp from lists of message sends and simultaneously do exclusions
+            xps = {k: list_of_datetimes_to_xp(v, timeout) for k, v in res.items() if k not in excl}
+            logger.debug(xps)
+            try:
+                self.suspended_guild.append(ctx.guild.id)
+                for user, xp in xps.items():
+                    await database.db.execute("INSERT OR REPLACE INTO experience (user, guild, experience) "
+                                              "VALUES (?,?,?)", (user, ctx.guild.id, xp))
+                await database.db.commit()
+                self.suspended_guild.remove(ctx.guild.id)
+            except Exception as e:
+                self.suspended_guild.remove(ctx.guild.id)
+                raise e
+        await ctx.reply(f"Successfully recalculated {sum(xps.values())} XP points for {len(xps)} users!")
+        await msg.delete()
 
     # TODO: add option to exclude all child threads
     @moderation.mod_only()
@@ -170,8 +273,13 @@ class ExperienceCog(commands.Cog):
             # enabled or disabled
             await ctx.reply(f"✔️ {result} your XP.")
 
-    @commands.command()
+    @commands.command(aliases=["level", "xp", "exp", "experience"])
     async def rank(self, ctx: commands.Context, user: typing.Optional[discord.User] = None):
+        """
+        Get your rank and XP info
+        :param ctx: discord context
+        :param user: optionally specify someone other than you to check the XP of
+        """
         # https://www.wolframalpha.com/input/?i=sum+from+0+to+x+yx
         if user is None:
             user = ctx.author
@@ -201,7 +309,7 @@ class ExperienceCog(commands.Cog):
         embed = discord.Embed(color=discord.Color(0x15fe02))
         embed.set_author(name=user.display_name, icon_url=user.avatar.url)
         embed.set_footer(text=ctx.guild.name, icon_url=ctx.guild.icon.url)
-        embed.add_field(name="XP", value=f"{exp:,%.g}", inline=True)
+        embed.add_field(name="XP", value=f"{exp:,.100g}", inline=True)
         embed.add_field(name="Level", value=f"{level}", inline=True)
         embed.add_field(name="Rank", value=f"{rank}", inline=True)
         embed.add_field(name="Progress To Next Level", value=f"{si_prefix.si_format(xp_for_current_level)} `{bar}` "
@@ -210,7 +318,7 @@ class ExperienceCog(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command()
+    @commands.command(aliases=["levels", "ranks", "top", "xps", "exps", "experiences", "board"])
     async def leaderboard(self, ctx: commands.Context, page: int = 1):
         assert page > 0, "Page must be 1 or more"
         async with database.db.execute(f"SELECT user, experience, RANK() OVER (ORDER BY experience DESC) "
