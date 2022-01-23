@@ -2,19 +2,17 @@ import asyncio
 import typing
 from datetime import datetime, timedelta, timezone
 
-import aiosqlite
 import humanize
 import nextcord as discord
 from nextcord.ext import commands
 from nextcord.ext.commands import Greedy
 
-import config
+import database
 import modlog
 import scheduler
 from clogs import logger
 from embedutils import add_long_field, split_embed
 from timeconverter import TimeConverter
-import database
 
 
 async def is_mod(guild: discord.Guild, user: typing.Union[discord.User, discord.Member]):
@@ -61,7 +59,7 @@ async def update_server_config(server: int, config: str, value):
     async with database.db.execute("SELECT COUNT(guild) FROM server_config WHERE guild=?", (server,)) as cur:
         guilds = await cur.fetchone()
     if guilds[0]:  # if there already is a row for this guild
-        await database.db.execute(f"UPDATE server_config SET {config} = ? WHERE guild=?" , (value, server))
+        await database.db.execute(f"UPDATE server_config SET {config} = ? WHERE guild=?", (value, server))
     else:  # if not, make one
         await database.db.execute(f"INSERT INTO server_config(guild, {config}) VALUES (?, ?)", (server, value))
     await database.db.commit()
@@ -136,16 +134,17 @@ async def mute_action(member: discord.Member, mute_length: typing.Optional[timed
 
 async def on_warn(member: discord.Member, issued_points: float):
     async with database.db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
-                          (member.guild.id,)) as cur:
+                                   (member.guild.id,)) as cur:
         thin_ice_role = await cur.fetchone()
     if thin_ice_role is not None and thin_ice_role[0] is not None and thin_ice_role[0] in [role.id for role in
                                                                                            member.roles]:
-        await database.db.execute("UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice+? WHERE guild=? AND user=?",
-                         (issued_points, member.guild.id, member.id))
+        await database.db.execute(
+            "UPDATE thin_ice SET warns_on_thin_ice = warns_on_thin_ice+? WHERE guild=? AND user=?",
+            (issued_points, member.guild.id, member.id))
         await database.db.commit()
         threshold = thin_ice_role[1]
         async with database.db.execute("SELECT warns_on_thin_ice FROM thin_ice WHERE guild=? AND user=?",
-                              (member.guild.id, member.id)) as cur:
+                                       (member.guild.id, member.id)) as cur:
             warns_on_thin_ice = (await cur.fetchone())[0]
         if warns_on_thin_ice >= threshold:
             await ban_action(member, member.guild, None, f"Automatically banned for receiving more than {threshold}"
@@ -154,7 +153,7 @@ async def on_warn(member: discord.Member, issued_points: float):
                                 f"banned for receiving more than {threshold} "
                                 f"points on thin ice.", member.guild.id, member.id)
             await database.db.execute("UPDATE thin_ice SET warns_on_thin_ice = 0 WHERE guild=? AND user=?",
-                             (member.guild.id, member.id))
+                                      (member.guild.id, member.id))
             await database.db.commit()
 
     else:
@@ -220,8 +219,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         actuallycancelledanytasks = False
         async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                              "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                              (guild.id, user.id, "unban")) as cur:
+                                       "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                       (guild.id, user.id, "unban")) as cur:
             async for row in cur:
                 await scheduler.canceltask(row[0])
                 actuallycancelledanytasks = True
@@ -229,7 +228,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
             thin_ice_role = await cur.fetchone()
         if thin_ice_role is not None and thin_ice_role[0] is not None:
             await database.db.execute("REPLACE INTO thin_ice(user,guild,marked_for_thin_ice,warns_on_thin_ice) VALUES "
-                             "(?,?,?,?)", (user.id, guild.id, True, 0))
+                                      "(?,?,?,?)", (user.id, guild.id, True, 0))
             await database.db.commit()
         if actuallycancelledanytasks:
             try:
@@ -255,8 +254,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                              "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                              (guild.id, user.id, "un_thin_ice")) as cur:
+                                       "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                       (guild.id, user.id, "un_thin_ice")) as cur:
             async for row in cur:
                 await scheduler.canceltask(row[0])
         async with database.db.execute("SELECT ban_appeal_link FROM server_config WHERE guild=?", (guild.id,)) as cur:
@@ -273,8 +272,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if before.timeout is not None and after.timeout is None:  # if muted role manually removed
             actuallycancelledanytasks = False
             async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                  "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
-                                  (after.guild.id, after.id, "unmute", "refresh_mute")) as cur:
+                                           "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
+                                           (after.guild.id, after.id, "unmute", "refresh_mute")) as cur:
                 async for row in cur:
                     await scheduler.canceltask(row[0])
                     actuallycancelledanytasks = True
@@ -282,19 +281,19 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 await after.send(f"You were manually unmuted in **{after.guild.name}**.")
         # remove thin ice from records if manually removed
         async with database.db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?",
-                              (after.guild.id,)) as cur:
+                                       (after.guild.id,)) as cur:
             thin_ice_role = await cur.fetchone()
         if thin_ice_role is not None and thin_ice_role[0] is not None:
             if thin_ice_role[0] in [role.id for role in before.roles] \
                     and thin_ice_role[0] not in [role.id for role in after.roles]:  # if muted role manually removed
                 actuallycancelledanytasks = False
                 async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                      "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                      (after.guild.id, after.id, "un_thin_ice")) as cur:
+                                               "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                               (after.guild.id, after.id, "un_thin_ice")) as cur:
                     async for row in cur:
                         await scheduler.canceltask(row[0])
                         await database.db.execute("DELETE FROM thin_ice WHERE guild=? and user=?",
-                                         (after.guild.id, after.id))
+                                                  (after.guild.id, after.id))
                         actuallycancelledanytasks = True
                     await database.db.commit()
                 if actuallycancelledanytasks:
@@ -305,11 +304,11 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         async with database.db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
-                              (member.guild.id,)) as cur:
+                                       (member.guild.id,)) as cur:
             thin_ice_role = await cur.fetchone()
         if thin_ice_role is not None and thin_ice_role[0] is not None:
             async with database.db.execute("SELECT * from thin_ice WHERE user=? AND guild=? AND marked_for_thin_ice=1",
-                                  (member.id, member.guild.id)) as cur:
+                                           (member.id, member.guild.id)) as cur:
                 user = await cur.fetchone()
             if user is not None:
                 await member.add_roles(discord.Object(thin_ice_role[0]))
@@ -550,8 +549,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         for member in members:
             # cancel all unmute events
             async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                  "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
-                                  (ctx.guild.id, member.id, "unmute", "refresh_mute")) as cur:
+                                           "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
+                                           (ctx.guild.id, member.id, "unmute", "refresh_mute")) as cur:
                 async for row in cur:
                     await scheduler.canceltask(row[0])
 
@@ -592,8 +591,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
             except (discord.Forbidden, discord.HTTPException, AttributeError):
                 logger.debug("pass")
             async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                  "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
-                                  (ctx.guild.id, member.id, "unban")) as cur:
+                                           "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",
+                                           (ctx.guild.id, member.id, "unban")) as cur:
                 async for row in cur:
                     await scheduler.canceltask(row[0])
 
@@ -621,8 +620,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 # update warns on thin ice
                 member = await ctx.guild.fetch_member(warn[0])
                 points = warn[1]
-                async with database.db.execute("SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
-                                      (member.guild.id,)) as cur:
+                async with database.db.execute(
+                        "SELECT thin_ice_role, thin_ice_threshold FROM server_config WHERE guild=?",
+                        (member.guild.id,)) as cur:
                     thin_ice_role = await cur.fetchone()
                 if thin_ice_role is not None and thin_ice_role[0] is not None \
                         and thin_ice_role[0] in [role.id for role in member.roles]:
@@ -701,9 +701,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
         now = datetime.now(tz=timezone.utc)
         for member in members:
             await database.db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
-                             "VALUES (?, ?, ?, ?, ?, ?)",
-                             (ctx.guild.id, member.id, ctx.author.id,
-                              int(now.timestamp()), reason, points))
+                                      "VALUES (?, ?, ?, ?, ?, ?)",
+                                      (ctx.guild.id, member.id, ctx.author.id,
+                                       int(now.timestamp()), reason, points))
             await database.db.commit()
             await ctx.reply(f"Warned {member.mention} with {points} infraction point{'' if points == 1 else 's'} for: "
                             f"`{reason}`")
@@ -753,9 +753,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
             points = round(points, 1)
         now = datetime(day=day, month=month, year=year, tzinfo=timezone.utc)
         await database.db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
-                         "VALUES (?, ?, ?, ?, ?, ?)",
-                         (ctx.guild.id, member.id, ctx.author.id,
-                          int(now.timestamp()), reason, points))
+                                  "VALUES (?, ?, ?, ?, ?, ?)",
+                                  (ctx.guild.id, member.id, ctx.author.id,
+                                   int(now.timestamp()), reason, points))
         await database.db.commit()
         await ctx.reply(
             f"Created warn on <t:{int(now.timestamp())}:D> for {member.mention} with {points} infraction "
@@ -790,9 +790,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                   description=member.mention)
             deactivated_text = "" if show_deleted else "AND deactivated=0"
             async with database.db.execute(f"SELECT id, issuedby, issuedat, reason, deactivated, points FROM warnings "
-                                  f"WHERE user=? AND server=? {deactivated_text} ORDER BY issuedat DESC "
-                                  f"LIMIT 25 OFFSET ?",
-                                  (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
+                                           f"WHERE user=? AND server=? {deactivated_text} ORDER BY issuedat DESC "
+                                           f"LIMIT 25 OFFSET ?",
+                                           (member.id, ctx.guild.id, (page - 1) * 25)) as cursor:
                 # now = datetime.now(tz=timezone.utc)
                 async for warn in cursor:
                     issuedby = await self.bot.fetch_user(warn[1])
@@ -808,13 +808,14 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                    f"Issued <t:{int(issuedat)}:f> "
                                    f"(<t:{int(issuedat)}:R>)", inline=False)
             async with database.db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=0",
-                                  (member.id, ctx.guild.id)) as cur:
+                                           (member.id, ctx.guild.id)) as cur:
                 warncount = (await cur.fetchone())[0]
             async with database.db.execute("SELECT count(*) FROM warnings WHERE user=? AND server=? AND deactivated=1",
-                                  (member.id, ctx.guild.id)) as cur:
+                                           (member.id, ctx.guild.id)) as cur:
                 delwarncount = (await cur.fetchone())[0]
-            async with database.db.execute("SELECT sum(points) FROM warnings WHERE user=? AND server=? AND deactivated=0",
-                                  (member.id, ctx.guild.id)) as cur:
+            async with database.db.execute(
+                    "SELECT sum(points) FROM warnings WHERE user=? AND server=? AND deactivated=0",
+                    (member.id, ctx.guild.id)) as cur:
                 points = (await cur.fetchone())[0]
                 if points is None:
                     points = 0
@@ -845,9 +846,9 @@ class ModerationCog(commands.Cog, name="Moderation"):
             embed = discord.Embed(title=f"Modlogs for {member.display_name}: Page {page}",
                                   color=discord.Color(0xB565D9), description=member.mention)
             async with database.db.execute(f"SELECT text,datetime,user,moderator FROM modlog "
-                                  f"WHERE {'moderator' if viewmodactions else 'user'}=? AND guild=? "
-                                  f"ORDER BY datetime DESC LIMIT 10 OFFSET ?",
-                                  (member.id, ctx.guild.id, (page - 1) * 10)) as cursor:
+                                           f"WHERE {'moderator' if viewmodactions else 'user'}=? AND guild=? "
+                                           f"ORDER BY datetime DESC LIMIT 10 OFFSET ?",
+                                           (member.id, ctx.guild.id, (page - 1) * 10)) as cursor:
                 now = datetime.now(tz=timezone.utc)
                 async for log in cursor:
                     if log[2]:
@@ -925,7 +926,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         assert point_count > 0
         cur = await database.db.execute("DELETE FROM auto_punishment WHERE warn_count=? AND guild=?",
-                               (point_count, ctx.guild.id))
+                                        (point_count, ctx.guild.id))
         await database.db.commit()
         if cur.rowcount > 0:
             await ctx.reply(f"✔️ Removed rule for {point_count} point{'' if point_count == 1 else 's'}.")
@@ -943,7 +944,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
         """
         embed = discord.Embed(title=f"Auto-punishment rules for {ctx.guild.name}", color=discord.Color(0xB565D9))
         async with database.db.execute("SELECT * FROM auto_punishment WHERE guild=? ORDER BY warn_count DESC LIMIT 25",
-                              (ctx.guild.id,)) as cursor:
+                                       (ctx.guild.id,)) as cursor:
             async for p in cursor:
                 value = self.autopunishment_to_text(p[1], timedelta(seconds=p[4]), p[2], timedelta(seconds=p[3]))
                 embed.add_field(name=f"Rule for {p[1]} point{'' if p[1] == 1 else 's'}", value=value, inline=False)

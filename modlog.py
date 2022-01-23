@@ -1,9 +1,8 @@
 import typing
 from datetime import datetime, timezone
 
-import aiosqlite
-import nextcord as discord
 from nextcord.ext import commands
+
 import database
 
 botcopy = commands.Bot
@@ -18,9 +17,10 @@ class ModLogInitCog(commands.Cog):
 
 async def modlog(msg: str, guildid: int, userid: typing.Optional[int] = None, modid: typing.Optional[int] = None):
     await database.db.execute("INSERT INTO modlog(guild,user,moderator,text,datetime) VALUES (?,?,?,?,?)",
-                     (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
+                              (guildid, userid, modid, msg, datetime.now(tz=timezone.utc).timestamp()))
     await database.db.commit()
-    async with database.db.execute("SELECT log_channel,bulk_log_channel FROM xp_change_per_level WHERE guild=?", (guildid,)) as cur:
+    async with database.db.execute("SELECT log_channel,bulk_log_channel FROM xp_change_per_level WHERE guild=?",
+                                   (guildid,)) as cur:
         modlogchannel = await cur.fetchone()
     if modlogchannel is None or modlogchannel[0] is None:
         return
