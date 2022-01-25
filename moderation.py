@@ -25,11 +25,9 @@ async def is_mod(guild: discord.Guild, user: typing.Union[discord.User, discord.
             return False
     if user.guild_permissions.manage_guild:
         return True
-    async with database.db.execute("SELECT mod_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
-        modrole = await cur.fetchone()
+    modrole = await get_server_config(guild.id, "mod_role")
     if modrole is None:
         return False
-    modrole = modrole[0]
     if modrole in [r.id for r in user.roles]:
         return True
     return False
@@ -41,11 +39,9 @@ def mod_only():
             raise commands.NoPrivateMessage
         if ctx.author.guild_permissions.manage_guild:
             return True
-        async with database.db.execute("SELECT mod_role FROM server_config WHERE guild=?", (ctx.guild.id,)) as cur:
-            modrole = await cur.fetchone()
+        modrole = await get_server_config(ctx.guild.id, "mod_role")
         if modrole is None:
             raise commands.CheckFailure("Server has no moderator role set up. Ask an admin to add one.")
-        modrole = modrole[0]
         if modrole in [r.id for r in ctx.author.roles]:
             return True
         raise commands.CheckFailure(
@@ -63,6 +59,16 @@ async def update_server_config(server: int, config: str, value):
     else:  # if not, make one
         await database.db.execute(f"INSERT INTO server_config(guild, {config}) VALUES (?, ?)", (server, value))
     await database.db.commit()
+
+
+async def get_server_config(guild: int, config: str):
+    """DO NOT ALLOW CONFIG TO BE PASSED AS A VARIABLE, PRE-DEFINED STRINGS ONLY."""
+    async with database.db.execute(f"SELECT {config} FROM server_config WHERE guild=?", (guild,)) as cur:
+        conf = await cur.fetchone()
+    if conf is None:
+        return None
+    else:
+        return conf[0]
 
 
 async def ban_action(user: typing.Union[discord.User, discord.Member], guild: discord.Guild,
@@ -224,9 +230,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
             async for row in cur:
                 await scheduler.canceltask(row[0])
                 actuallycancelledanytasks = True
-        async with database.db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?", (guild.id,)) as cur:
-            thin_ice_role = await cur.fetchone()
-        if thin_ice_role is not None and thin_ice_role[0] is not None:
+        thin_ice_role = await get_server_config(guild.id, "thin_ice_role")
+        if thin_ice_role is not None:
             await database.db.execute("REPLACE INTO thin_ice(user,guild,marked_for_thin_ice,warns_on_thin_ice) VALUES "
                                       "(?,?,?,?)", (user.id, guild.id, True, 0))
             await database.db.commit()
@@ -249,11 +254,10 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                        (guild.id, user.id, "un_thin_ice")) as cur:
             async for row in cur:
                 await scheduler.canceltask(row[0])
-        async with database.db.execute("SELECT ban_appeal_link FROM server_config WHERE guild=?", (guild.id,)) as cur:
-            ban_appeal_link = await cur.fetchone()
-        if ban_appeal_link is not None and ban_appeal_link[0] is not None:
+        ban_appeal_link = await get_server_config(guild.id, "ban_appeal_link")
+        if ban_appeal_link is not None:
             try:
-                await user.send(f"You can appeal your ban from **{guild.name}** at {ban_appeal_link[0]}")
+                await user.send(f"You can appeal your ban from **{guild.name}** at {ban_appeal_link}")
             except (discord.Forbidden, discord.HTTPException, AttributeError):
                 logger.debug("pass")
 
@@ -271,12 +275,10 @@ class ModerationCog(commands.Cog, name="Moderation"):
             if actuallycancelledanytasks:
                 await after.send(f"You were manually unmuted in **{after.guild.name}**.")
         # remove thin ice from records if manually removed
-        async with database.db.execute("SELECT thin_ice_role FROM server_config WHERE guild=?",
-                                       (after.guild.id,)) as cur:
-            thin_ice_role = await cur.fetchone()
-        if thin_ice_role is not None and thin_ice_role[0] is not None:
-            if thin_ice_role[0] in [role.id for role in before.roles] \
-                    and thin_ice_role[0] not in [role.id for role in after.roles]:  # if muted role manually removed
+        thin_ice_role = await get_server_config(after.guild.id, "mod_role")
+        if thin_ice_role is not None:
+            if thin_ice_role in [role.id for role in before.roles] \
+                    and thin_ice_role not in [role.id for role in after.roles]:  # if muted role manually removed
                 actuallycancelledanytasks = False
                 async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
                                                "AND json_extract(eventdata, \"$.member\")=? AND eventtype=?",

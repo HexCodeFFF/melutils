@@ -14,6 +14,7 @@ from nextcord.ext.commands import BucketType
 
 import database
 import moderation
+import modlog
 from clogs import logger
 
 
@@ -348,10 +349,32 @@ class ExperienceCog(commands.Cog):
             embed.add_field(name="No users found!",
                             value="Try going back a page and making sure experience is enabled in this server")
         await ctx.reply(embed=embed)
+
     # TODO: serverwide disable or enable
     # TODO: serverwide reset
     # TODO: user reset?
     # TODO: xp info command
+
+    @commands.command()
+    @commands.has_guild_permissions(manage_guild=True)
+    @commands.guild_only()
+    async def setxpcooldown(self, ctx: commands.Context, cooldown: typing.Optional[float] = None):
+        """
+        Sets or gets the amount of time a user has to wait between messages to gain XP again.
+
+        :param ctx: discord context
+        :param cooldown: amount of seconds to wait before gaining XP again. don't specify to see guild's current cooldown.
+        """
+        if cooldown is None:
+            await moderation.update_server_config(ctx.guild.id, "bulk_log_channel", None)
+            await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) removed the server bulklog channel.",
+                                ctx.guild.id, ctx.author.id)
+            await ctx.reply("✔️ Removed server bulklog channel.")
+        else:
+            await moderation.update_server_config(ctx.guild.id, "bulk_log_channel", channel.id)
+            await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) set the server bulklog channel to "
+                                f"{channel.mention} ({channel}).", ctx.guild.id, ctx.author.id)
+            await ctx.reply(f"✔️ Set server bulklog channel to **{channel.mention}**")
 
 
 '''
