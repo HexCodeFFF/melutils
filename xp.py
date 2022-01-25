@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import itertools
 import math
@@ -92,7 +93,7 @@ def list_of_datetimes_to_xp(inp: list[datetime.datetime], time_between_xp: float
     return xp
 
 
-class ExperienceCog(commands.Cog):
+class ExperienceCog(commands.Cog, name="Experience"):
     def __init__(self, bot):
         self.bot: commands.Bot = bot
         # var and not db for performance and cause it doesnt really matter if its lost
@@ -375,7 +376,57 @@ class ExperienceCog(commands.Cog):
             await moderation.update_server_config(ctx.guild.id, "time_between_xp", cooldown)
             await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) set the server xp cooldown to "
                                 f"{cooldown} seconds.", ctx.guild.id, ctx.author.id)
-            await ctx.reply(f"✔️ Set server xp cooldown to **{cooldown:g} seconds**.")
+            await ctx.reply(f"✔ Set server xp cooldown to **{cooldown:g} seconds**.")
+
+    @commands.command()
+    @commands.has_guild_permissions(manage_guild=True)
+    @commands.guild_only()
+    async def resetuserxp(self, ctx: commands.Context, user: discord.User):
+        """
+        reset the XP for a user.  THIS IS IRREVERSIBLE.
+        :param ctx:
+        :param user: the user to reset the XP for
+        """
+
+        await database.db.execute("DELETE FROM experience WHERE user=? AND guild=?", (user.id, ctx.guild.id))
+        await database.db.commit()
+        await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) reset {user.mention} ({user})'s XP.",
+                            ctx.guild.id, ctx.author.id)
+        await ctx.reply(f"✔ Reset {user.mention}'s XP.")
+
+    @commands.command(aliases=["resetserverxp"])
+    @commands.has_guild_permissions(administrator=True)
+    @commands.guild_only()
+    async def resetguildxp(self, ctx: commands.Context):
+        """
+        reset the XP for the entire server. THIS IS IRREVERSIBLE.
+        """
+
+        def check(m: discord.Message):
+            return m.author == ctx.author and m.channel == ctx.channel
+
+        confirmstring = f"Reset ALL XP for {ctx.guild}"
+        await ctx.reply(f"Are you sure you want to reset ALL xp for the server? "
+                        f"Respond with `{confirmstring}` to confirm.")
+        try:
+            msg: discord.Message = await self.bot.wait_for('message', check=check, timeout=30.0)
+        except asyncio.TimeoutError:
+            await ctx.reply("❌ Did not receive confirmation in time. Aborting delete.")
+        else:
+            if msg.content == confirmstring:
+                try:
+                    self.suspended_guild.append(ctx.guild.id)
+                    await database.db.execute("DELETE FROM experience WHERE guild=?", (ctx.guild.id,))
+                    await database.db.commit()
+                    self.suspended_guild.remove(ctx.guild.id)
+                except Exception as e:
+                    self.suspended_guild.remove(ctx.guild.id)
+                    raise e
+                await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) reset guild's XP.",
+                                    ctx.guild.id, ctx.author.id)
+                await ctx.reply(f"✔ ️Reset {ctx.guild}'s XP.")
+            else:
+                await ctx.reply("❌ Response does not match message needed to confirm. Aborting delete.")
 
 
 '''
