@@ -120,9 +120,9 @@ class ExperienceCog(commands.Cog):
                                            (message.guild.id,)) as cur:
                 cur: aiosqlite.Cursor
                 timeout = await cur.fetchone()
-            # error for now
+            # return default
             if timeout is None:
-                return
+                timeout = 60
             # make sure the minimum timeout has passed
             sincelastmsg = discord.utils.utcnow() - self.last_message_in_guild[f"{message.author.id}."
                                                                                f"{message.guild.id}"]
@@ -358,7 +358,7 @@ class ExperienceCog(commands.Cog):
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
     @commands.guild_only()
-    async def setxpcooldown(self, ctx: commands.Context, cooldown: typing.Optional[float] = None):
+    async def xpcooldown(self, ctx: commands.Context, cooldown: typing.Optional[float] = None):
         """
         Sets or gets the amount of time a user has to wait between messages to gain XP again.
 
@@ -366,15 +366,16 @@ class ExperienceCog(commands.Cog):
         :param cooldown: amount of seconds to wait before gaining XP again. don't specify to see guild's current cooldown.
         """
         if cooldown is None:
-            await moderation.update_server_config(ctx.guild.id, "bulk_log_channel", None)
-            await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) removed the server bulklog channel.",
-                                ctx.guild.id, ctx.author.id)
-            await ctx.reply("✔️ Removed server bulklog channel.")
+            cooldown = await moderation.get_server_config(ctx.guild.id, "time_between_xp")
+            if cooldown is None:
+                cooldown = 60
+            await ctx.reply(f"{ctx.guild.name}'s XP cooldown is **{cooldown:g} seconds**.")
         else:
-            await moderation.update_server_config(ctx.guild.id, "bulk_log_channel", channel.id)
-            await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) set the server bulklog channel to "
-                                f"{channel.mention} ({channel}).", ctx.guild.id, ctx.author.id)
-            await ctx.reply(f"✔️ Set server bulklog channel to **{channel.mention}**")
+            assert cooldown >= 0, "cooldown must be 0 or more"
+            await moderation.update_server_config(ctx.guild.id, "time_between_xp", cooldown)
+            await modlog.modlog(f"{ctx.author.mention} ({ctx.author}) set the server xp cooldown to "
+                                f"{cooldown} seconds.", ctx.guild.id, ctx.author.id)
+            await ctx.reply(f"✔️ Set server xp cooldown to **{cooldown:g} seconds**.")
 
 
 '''
