@@ -267,7 +267,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
         if before.timeout is not None and after.timeout is None:  # if muted role manually removed
             actuallycancelledanytasks = False
             async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
-                                           "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR eventtype=?)",
+                                           "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR "
+                                           "eventtype=?)",
                                            (after.guild.id, after.id, "unmute", "refresh_mute")) as cur:
                 async for row in cur:
                     await scheduler.canceltask(row[0])

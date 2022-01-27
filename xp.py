@@ -128,8 +128,8 @@ class ExperienceCog(commands.Cog, name="Experience"):
             sincelastmsg = discord.utils.utcnow() - self.last_message_in_guild[f"{message.author.id}."
                                                                                f"{message.guild.id}"]
             if sincelastmsg.total_seconds() < timeout[0]:
-                logger.debug(f"{message.author} has to wait {timeout[0] - sincelastmsg.total_seconds()} before "
-                             f"gaining XP again in {message.guild}.")
+                logger.debug(f"{message.author} has to wait {round(timeout[0] - sincelastmsg.total_seconds(), 1):g}s"
+                             f" before gaining XP again in {message.guild}.")
                 return
         # check if user or channel is excluded from gaining XP
         async with database.db.execute("SELECT userorchannel FROM guild_xp_exclusions WHERE guild=?",
@@ -322,6 +322,9 @@ class ExperienceCog(commands.Cog, name="Experience"):
 
     @commands.command(aliases=["expinfo", "experienceinfo"])
     async def xpinfo(self, ctx: commands.Context):
+        """
+        view how XP works globally and for this server
+        """
         embed = discord.Embed(color=discord.Color(0x15fe02), title="Experience Info")
         embed.add_field(name="What is XP?", value="Experience is a measure of how active you are in this server.",
                         inline=False)
@@ -351,6 +354,11 @@ class ExperienceCog(commands.Cog, name="Experience"):
 
     @commands.command(aliases=["levels", "ranks", "top", "xps", "exps", "experiences", "board"])
     async def leaderboard(self, ctx: commands.Context, page: int = 1):
+        """
+        view the users with the most XP
+        :param ctx: discord context
+        :param page: page of results
+        """
         assert page > 0, "Page must be 1 or more"
         async with database.db.execute(f"SELECT user, experience, RANK() OVER (ORDER BY experience DESC) "
                                        f"experience_rank FROM experience WHERE guild = ? "
@@ -361,6 +369,7 @@ class ExperienceCog(commands.Cog, name="Experience"):
                               description=f"Page {page}")
         embed.set_thumbnail(url=ctx.guild.icon.url)
         if rows:
+            # get guild xp settings
             async with database.db.execute("SELECT xp_change_per_level FROM server_config WHERE guild=?",
                                            (ctx.guild.id,)) as cur:
                 change_per_level = await cur.fetchone()
@@ -369,11 +378,18 @@ class ExperienceCog(commands.Cog, name="Experience"):
                 change_per_level = 30
             else:
                 change_per_level = change_per_level[0]
+            # get top xp to make bar
+            async with database.db.execute("SELECT experience FROM experience WHERE guild=? ORDER BY experience DESC",
+                                           (ctx.guild.id,)) as cur:
+                topxp = (await cur.fetchone())[0]
+            # format leaderboard
             text = ""
             for row in rows:
                 user, experience, rank = row
-                text += f"**#{rank}** <@{user}>\n**{si_prefix.si_format(experience)}** XP |" \
-                        f" Level **{xp_to_level(experience, change_per_level)}**\n"
+                text += f"**#{rank}** <@{user}>\n" \
+                        f"Level **{xp_to_level(experience, change_per_level)}** " \
+                        f"`{progress_bar(experience, topxp, 20)}` " \
+                        f"**{si_prefix.si_format(experience)}** XP\n"
             embed.add_field(name="Leaderboard", value=text)
         else:
             embed.add_field(name="No users found!",

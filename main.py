@@ -1,4 +1,3 @@
-import asyncio
 import glob
 import os
 import sqlite3
@@ -14,7 +13,7 @@ from autoreaction import AutoReactionCog
 from birthday import BirthdayCog
 from bulklog import BulkLog
 from clogs import logger
-from database import InitDB, create_db
+from database import InitDB
 from errhandler import ErrorHandler
 from funcommands import FunCommands
 from funnybanner import FunnyBanner
@@ -129,11 +128,15 @@ async def on_command_completion(ctx):
 async def on_ready():
     scheduler.botcopy = bot
     logger.log(35, f"Logged in as {bot.user.name}!")
+    guilddict = {guild.id: guild.name for guild in bot.guilds}
+    logger.debug(f"{len(bot.guilds)} guild(s): {guilddict}")
 
 
+@bot.is_owner
 @bot.command()
-async def testcommand(ctx: commands.Context, someargument: str, color: discord.Color = None):
-    await ctx.reply(f"You inputted {someargument} and {color}")
+async def leave(ctx: commands.Context, guild: discord.Guild):
+    await guild.leave()
+    await ctx.reply(f"Left {guild} ({guild.id})")
 
 
 bot.run(config.bot_token)
