@@ -156,7 +156,6 @@ class ExperienceCog(commands.Cog, name="Experience"):
         """
         recalculate guild's XP from message history
         """
-        # TODO: implement
         async with ctx.typing():
             # get text channels and active threads
             channels = ctx.guild.text_channels + ctx.guild.threads
@@ -317,8 +316,38 @@ class ExperienceCog(commands.Cog, name="Experience"):
         embed.add_field(name="Progress To Next Level", value=f"{si_prefix.si_format(xp_for_current_level)} `{bar}` "
                                                              f"{si_prefix.si_format(xp_for_next_level)}",
                         inline=False)
+        embed.add_field(name="What?", value="For info on how MelUtils XP works: run `m.xpinfo`")
 
         await ctx.reply(embed=embed)
+
+    @commands.command(aliases=["expinfo", "experienceinfo"])
+    async def xpinfo(self, ctx: commands.Context):
+        embed = discord.Embed(color=discord.Color(0x15fe02), title="Experience Info")
+        embed.add_field(name="What is XP?", value="Experience is a measure of how active you are in this server.",
+                        inline=False)
+        embed.add_field(name="How do I get XP?", value="Each message you send can give you 1XP. Messages sent too "
+                                                       "quickly (or in the future, any sent in a row) will not count "
+                                                       "to prevent spam.", inline=False)
+        embed.add_field(name="What are levels?", value="Levels are landmarks that can be achieved by gaining XP. Each "
+                                                       "level requires more XP than the last. These numbers are "
+                                                       "usually smaller and more easily \"digestible\" than the raw "
+                                                       "XP.", inline=False)
+        embed.add_field(name="What XP commands can I run?", value="Run `m.help experience` to find out!",
+                        inline=False)
+        embed2 = discord.Embed(color=discord.Color(0xf6f121), title=f"Experience in {ctx.guild}")
+        embed2.set_thumbnail(url=ctx.guild.icon.url)
+        async with database.db.execute("SELECT time_between_xp, xp_change_per_level FROM server_config WHERE guild=?",
+                                       (ctx.guild.id,)) as cur:
+            xpinfo = await cur.fetchone()
+        if xpinfo is None:
+            xpinfo = 60, 30
+        time_between_xp, xp_change_per_level = xpinfo
+        embed2.add_field(name="Server Delay Between XP Gain",
+                         value=f"You can only gain XP every {time_between_xp:g} seconds in this server.", inline=False)
+        embed2.add_field(name="Server XP change per level",
+                         value=f"Each level requires {xp_change_per_level:g} more XP than the last in this server.",
+                         inline=False)
+        await ctx.reply(embeds=[embed, embed2])
 
     @commands.command(aliases=["levels", "ranks", "top", "xps", "exps", "experiences", "board"])
     async def leaderboard(self, ctx: commands.Context, page: int = 1):
@@ -352,9 +381,6 @@ class ExperienceCog(commands.Cog, name="Experience"):
         await ctx.reply(embed=embed)
 
     # TODO: serverwide disable or enable
-    # TODO: serverwide reset
-    # TODO: user reset?
-    # TODO: xp info command
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
