@@ -133,7 +133,7 @@ async def on_ready():
 
 
 @bot.is_owner
-@bot.command()
+@bot.command(hidden=True)
 async def leave(ctx: commands.Context, guild: discord.Guild):
     await guild.leave()
     await ctx.reply(f"Left {guild} ({guild.id})")

@@ -6,7 +6,7 @@ import nextcord as discord
 from nextcord.ext import commands
 
 import scheduler
-from timeconverter import TimeConverter
+from timeconverter import time_converter
 
 
 class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
@@ -19,11 +19,15 @@ class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
         await ctx.guild.get_member(self.bot.user.id).edit(nick=nickname)
         await ctx.reply(f"✅ Changed nickname to `{nickname}`")
 
-    @commands.command(aliases=["shutdown", "stop"])
+    @commands.command(aliases=["shutdown", "stop", "murder", "death", "kill"])
     @commands.is_owner()
     async def die(self, ctx):
         await ctx.reply("✅ Shutting down.")
         await self.bot.close()
+        await self.bot.loop.shutdown_asyncgens()
+        await self.bot.loop.shutdown_default_executor()
+        self.bot.loop.stop()
+        self.bot.loop.close()
 
     @commands.command()
     @commands.is_owner()
@@ -36,13 +40,13 @@ class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
 
     @commands.command()
     @commands.is_owner()
-    async def testschedule(self, ctx, time: TimeConverter):
+    async def testschedule(self, ctx, time: time_converter):
         scheduletime = datetime.now(tz=timezone.utc) + time
         await scheduler.schedule(scheduletime, "debug", {"message": "hello world!"})
 
     @commands.command()
     @commands.is_owner()
-    async def schedulemessage(self, ctx, time: TimeConverter, *, message):
+    async def schedulemessage(self, ctx, time: time_converter, *, message):
         scheduletime = datetime.now(tz=timezone.utc) + time
         await scheduler.schedule(scheduletime, "message", {"channel": ctx.channel.id, "message": message})
 

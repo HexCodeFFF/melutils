@@ -12,8 +12,8 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 import aiohttp
-import nextcord as discord
 import humanize
+import nextcord as discord
 from nextcord.ext import commands
 from nextcord.ext.commands import PartialEmojiConversionFailure
 from nextcord.ext.commands.cooldowns import BucketType
@@ -21,7 +21,7 @@ from nextcord.ext.commands.cooldowns import BucketType
 import config
 import scheduler
 from clogs import logger
-from timeconverter import TimeConverter
+from timeconverter import time_converter
 
 
 async def fetch_all(session, urls):
@@ -316,7 +316,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     await ctx.reply(f"File is {hsize}. Wrote to `files/media.zip`.")
 
     @commands.command(aliases=["remind", "remindme", "messagemein"])
-    async def reminder(self, ctx, when: TimeConverter, *, reminder):
+    async def reminder(self, ctx, when: time_converter, *, reminder):
         """
         set a reminder.
         :param ctx: discord context

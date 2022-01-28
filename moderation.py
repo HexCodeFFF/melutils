@@ -1,4 +1,5 @@
 import asyncio
+import json
 import typing
 from datetime import datetime, timedelta, timezone
 
@@ -12,7 +13,7 @@ import modlog
 import scheduler
 from clogs import logger
 from embedutils import add_long_field, split_embed
-from timeconverter import TimeConverter
+from timeconverter import time_converter
 
 
 async def is_mod(guild: discord.Guild, user: typing.Union[discord.User, discord.Member]):
@@ -443,7 +444,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.bot_has_permissions(ban_members=True)
     @mod_only()
     async def ban(self, ctx, members: Greedy[discord.User],
-                  ban_length: typing.Optional[TimeConverter] = None, *,
+                  ban_length: typing.Optional[time_converter] = None, *,
                   reason: str = "No reason provided."):
         """
         temporarily or permanently ban one or more members
@@ -486,7 +487,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.bot_has_permissions(manage_roles=True)
     @mod_only()
     async def mute(self, ctx, members: Greedy[discord.Member],
-                   mute_length: typing.Optional[TimeConverter] = None, *,
+                   mute_length: typing.Optional[time_converter] = None, *,
                    reason: str = "No reason provided."):
         """
         temporarily or permanently mute one or more members
@@ -882,8 +883,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.command(aliases=["addap", "aap"])
     @commands.guild_only()
     @commands.has_guild_permissions(manage_guild=True)
-    async def addautopunishment(self, ctx, point_count: int, point_timespan: TimeConverter, punishment_type: str,
-                                punishment_duration: TimeConverter):
+    async def addautopunishment(self, ctx, point_count: int, point_timespan: time_converter, punishment_type: str,
+                                punishment_duration: time_converter):
         """
         Adds an automatic punishment based on the amount of points obtained in a certain time period.
 
@@ -965,6 +966,18 @@ class ModerationCog(commands.Cog, name="Moderation"):
             modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) purged {num_messages} message(s) from "
                           f"{ctx.channel.mention}", ctx.guild.id, modid=ctx.author.id)
         )
+
+    @mod_only()
+    @commands.command()
+    async def lockchannel(self, ctx: commands.Context,
+                          channel: typing.Optional[typing.Union[discord.TextChannel, discord.Thread]] = None):
+        if channel is None:
+            channel = ctx.channel
+        perms = {}
+        for role, ovr in channel.overwrites.items():
+            allow, deny = ovr.pair()
+            perms[role.id] = {'allow': allow.value, 'deny': deny.value}
+        perms = json.dumps(perms)
 
 
 # @commands.is_owner()
