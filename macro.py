@@ -1,14 +1,13 @@
 import io
-import typing
 
-import aiosqlite
 import nextcord as discord
 from nextcord.ext import commands
 
+import database
 from clogs import logger
 from moderation import mod_only
 from modlog import modlog
-import database
+
 
 def alphanumeric(argument: str):
     return ''.join(i for i in argument if i.isalnum())
@@ -74,7 +73,7 @@ class MacroCog(commands.Cog, name="Macros"):
         if result is None or result[0] is None:
             await ctx.reply("⚠️ No macro found with that name!")
         else:
-            await ctx.send(result[0])
+            await ctx.send(result[0], reference=ctx.message.reference)
 
     @commands.command(aliases=["listmacros", "allmacros", "lm"])
     async def macros(self, ctx: commands.Context):
