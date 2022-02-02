@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import aiohttp
 import humanize
 import nextcord as discord
+from faker import Faker
 from nextcord.ext import commands
 from nextcord.ext.commands import PartialEmojiConversionFailure
 from nextcord.ext.commands.cooldowns import BucketType
@@ -562,6 +563,36 @@ class UtilityCommands(commands.Cog, name="Utility"):
             await ctx.reply(f"{obj.mention}'s ID is `{obj.id}`", )
         else:
             await ctx.reply(f"{str(obj)}'s ID is `{obj.id}`", )
+
+    @commands.command()
+    async def doxx(self, ctx: commands.Context, user: typing.Optional[discord.User] = None):
+        """
+        generate a **completely fake** block of details based off a user.
+        :param ctx:
+        :param user: the user to seed the generation. using the command on this user twice will yield the same info.
+            if command is in reply to a message, message author can be used if user is unspecified.
+        """
+        faker = Faker()
+        # die deadname!!
+        try:
+            dn = bytes.fromhex("526f62657274").decode('utf-8')
+            if dn in faker.providers[5].first_names:
+                del faker.providers[5].first_names[dn]
+        except:
+            pass
+        if not user and ctx.message.reference:
+            user = ctx.message.reference.resolved.author
+        if user:
+            faker.seed_instance(user.id)
+        meme = ["That's a nice argument. Unfortunately,",
+                f"{faker.name()}",
+                f"{faker.address()}",
+                f"{', '.join(faker.location_on_land(coords_only=True))}",
+                f"{faker.ipv4_public()} {faker.ipv6()}",
+                f"{faker.ssn()}",
+                f"{faker.credit_card_number()} {faker.credit_card_expire()} {faker.credit_card_security_code()}"
+                ]
+        await ctx.reply("\n".join(meme))
 
 
 '''
