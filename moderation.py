@@ -3,6 +3,7 @@ import json
 import typing
 from datetime import datetime, timedelta, timezone
 
+import aiosqlite
 import humanize
 import nextcord as discord
 from nextcord.ext import commands
@@ -695,15 +696,20 @@ class ModerationCog(commands.Cog, name="Moderation"):
             points = round(points, 1)
         now = datetime.now(tz=timezone.utc)
         for member in members:
-            await database.db.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
-                                      "VALUES (?, ?, ?, ?, ?, ?)",
-                                      (ctx.guild.id, member.id, ctx.author.id,
-                                       int(now.timestamp()), reason, points))
+            async with database.db.cursor() as cur:
+                cur: aiosqlite.Cursor
+                await cur.execute("INSERT INTO warnings(server, user, issuedby, issuedat, reason, points)"
+                                  "VALUES (?, ?, ?, ?, ?, ?)",
+                                  (ctx.guild.id, member.id, ctx.author.id,
+                                   int(now.timestamp()), reason, points))
+                insertedrow = cur.lastrowid
             await database.db.commit()
-            await ctx.reply(f"Warned {member.mention} with {points} infraction point{'' if points == 1 else 's'} for: "
-                            f"`{reason}`")
+
+            await ctx.reply(
+                f"Warned {member.mention} (warn ID `#{insertedrow}`) with {points} infraction point{'' if points == 1 else 's'} for: "
+                f"`{reason}`")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) "
-                                f"warned {member.mention} (`{member}`) with {points}"
+                                f"warned {member.mention} (`{member}`) (warn ID `#{insertedrow}`) with {points}"
                                 f" infraction point{'' if points == 1 else 's'} for: "
                                 f"`{reason}`", ctx.guild.id, member.id, ctx.author.id)
             try:
@@ -795,7 +801,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                     reason = warn[3]
                     points = warn[5]
                     add_long_field(embed,
-                                   name=f"Warn ID #{warn[0]}: {'%g' % points} point{'' if points == 1 else 's'}"
+                                   name=f"Warn ID `#{warn[0]}`: {'%g' % points} point{'' if points == 1 else 's'}"
                                         f"{' (Deleted)' if warn[4] else ''}",
                                    value=
                                    f"Reason: {reason}\n"

@@ -68,7 +68,8 @@ class MacroCog(commands.Cog, name="Macros"):
         """
         if name is None:
             return await self.macros(ctx)
-        async with database.db.execute("SELECT content FROM macros WHERE server=? AND name=?", (ctx.guild.id, name)) as cur:
+        async with database.db.execute("SELECT content FROM macros WHERE server=? AND name=?",
+                                       (ctx.guild.id, name)) as cur:
             result = await cur.fetchone()
         if result is None or result[0] is None:
             await ctx.reply("⚠️ No macro found with that name!")
@@ -81,7 +82,7 @@ class MacroCog(commands.Cog, name="Macros"):
         list all available macros
         """
         async with database.db.execute("SELECT name FROM macros WHERE server=?",
-                              (ctx.guild.id,)) as cursor:
+                                       (ctx.guild.id,)) as cursor:
             macros = [i[0] for i in await cursor.fetchall()]
         outstr = f"{len(macros)} macro{'' if len(macros) == 1 else 's'}: {', '.join(macros)}"
         if len(outstr) < 2000:
