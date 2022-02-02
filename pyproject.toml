@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "melutils"
+version = "1.0.0"
+description = "a discord bot mainly for moderation"
+authors = ["reticivis"]
+license = "GPL-3"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+nextcord = { git = "https://github.com/nextcord/nextcord.git" }
+humanize = { git = "https://github.com/HexCodeFFF/humanize.git" }
+si-prefix = { git = "https://github.com/HexCodeFFF/si-prefix.git" }
+coloredlogs = "^15.0.1"
+aiosqlite = "^0.17.0"
+aioscheduler = "^1.4.2"
+python-twitter = "^3.5"
+docstring-parser = "^0.13"
+emojis = "^0.6.0"
+aiofiles = "^0.8.0"
+Pillow = "^9.0.0"
+tqdm = "^4.62.3"
+Faker = "^12.0.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
