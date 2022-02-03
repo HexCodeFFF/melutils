@@ -573,24 +573,17 @@ class UtilityCommands(commands.Cog, name="Utility"):
             if command is in reply to a message, message author can be used if user is unspecified.
         """
         faker = Faker()
-        # die deadname!!
-        try:
-            dn = bytes.fromhex("526f62657274").decode('utf-8')
-            if dn in faker.providers[5].first_names:
-                del faker.providers[5].first_names[dn]
-        except:
-            pass
         if not user and ctx.message.reference:
             user = ctx.message.reference.resolved.author
         if user:
             faker.seed_instance(user.id)
+        credit_card = " ".join(slice_per(faker.credit_card_number("visa16"), 4))
         meme = ["That's a nice argument. Unfortunately,",
-                f"{faker.name()}",
                 f"{faker.address()}",
                 f"{', '.join(faker.location_on_land(coords_only=True))}",
                 f"{faker.ipv4_public()} {faker.ipv6()}",
                 f"{faker.ssn()}",
-                f"{faker.credit_card_number()} {faker.credit_card_expire()} {faker.credit_card_security_code()}"
+                f"{credit_card} {faker.credit_card_expire('visa16')} {faker.credit_card_security_code('visa16')}"
                 ]
         await ctx.reply("\n".join(meme))
 
