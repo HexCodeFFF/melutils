@@ -53,7 +53,7 @@ async def resize_url(url: str) -> typing.Optional[bytes]:
 
 class FunnyBanner(commands.Cog, name="Funny Banner"):
     """
-    send an image from @awesomepapers or set it as a banner
+    send an image from @Amazingpapers or set it as a banner
     """
 
     def __init__(self, bot):
@@ -95,24 +95,24 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
     @commands.command()
     async def awesomepaper(self, ctx):
         """
-        Sends a random image from @awesomepapers on twitter.
+        Sends a random image from @Amazingpapers on twitter.
         :returns: the image
         """
         async with ctx.typing():
-            await ctx.reply(await self.get_random_media_from_user("awesomepapers"))
+            await ctx.reply(await self.get_random_media_from_user("Amazingpapers"))
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)
     @commands.bot_has_guild_permissions(manage_guild=True)
     async def awesomebanner(self, ctx):
         """
-        sets the guild banner to a random image from @awesomepapers on twitter
+        sets the guild banner to a random image from @Amazingpapers on twitter
         """
         async with ctx.typing():
             if "BANNER" not in ctx.guild.features:
                 await ctx.reply("Guild does not support banners.")
                 return
-            banner_url = await self.get_random_media_from_user("awesomepapers")
+            banner_url = await self.get_random_media_from_user("Amazingpapers")
             async with aiohttp.ClientSession(headers={'Connection': 'keep-alive'}) as session:
                 async with session.get(banner_url) as resp:
                     if resp.status == 200:
