@@ -583,7 +583,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 f"{', '.join(faker.location_on_land(coords_only=True))}",
                 f"{faker.ipv4_public()} {faker.ipv6()}",
                 f"{faker.ssn()}",
-                f"{credit_card} {faker.credit_card_expire('visa16')} {faker.credit_card_security_code('visa16')}"
+                f"{credit_card}, {faker.credit_card_expire()}, {faker.credit_card_security_code('visa16')}"
                 ]
         await ctx.reply("\n".join(meme))
 

@@ -6,8 +6,8 @@ import nextcord as discord
 from nextcord.ext import commands
 from nextcord.http import Route
 
-import moderation
 import database
+import moderation
 
 
 class UnicodeEmojiNotFound(commands.BadArgument):
@@ -39,6 +39,7 @@ def booster_only():
 
 
 class NitroRolesCog(commands.Cog, name="Booster Roles"):
+    """Commands to allow server boosters to create and manage their own custom roles"""
     def __init__(self, bot):
         self.bot: commands.Bot = bot
 

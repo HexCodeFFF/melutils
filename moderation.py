@@ -974,16 +974,105 @@ class ModerationCog(commands.Cog, name="Moderation"):
         )
 
     @mod_only()
-    @commands.command()
+    @commands.command(aliases=["unlock", "unlockchannel", "lockch", "lockc", "lchannel"])
     async def lockchannel(self, ctx: commands.Context,
-                          channel: typing.Optional[typing.Union[discord.TextChannel, discord.Thread]] = None):
+                          channel: typing.Optional[discord.TextChannel] = None,
+                          allow_mods_to_speak: bool = True):
+        """
+        lock or unlock a channel
+        :param ctx:
+        :param channel: optionally specify a channel other than the current channel to lock
+        :param allow_mods_to_speak: allow mods to speak in the locked channel
+        """
+        if channel is None:
+            if isinstance(ctx.channel, discord.TextChannel):
+                channel = ctx.channel
+            else:
+                raise commands.BadArgument("Channel must be a text channel")
+        assert channel.guild == ctx.guild, "Channel must be in this server!"
+        async with ctx.channel.typing():
+            async with database.db.execute("SELECT data FROM lockedchannelperms WHERE guild=? AND channel=?",
+                                           (channel.guild.id, channel.id)) as cur:
+                row = await cur.fetchone()
+            if row is None:  # unlocked, need to lock
+                # store current perms in database
+                perms = {}
+                for role, ovr in channel.overwrites.items():
+                    allow, deny = ovr.pair()
+                    perms[role.id] = {'allow': allow.value, 'deny': deny.value}
+                perms = json.dumps(perms)
+                logger.debug(perms)
+                await database.db.execute("INSERT INTO lockedchannelperms VALUES (?,?,?)",
+                                          (channel.guild.id, channel.id, perms))
+                await database.db.commit()
+                # update perms
+                modrole = ctx.guild.get_role(int(await get_server_config(ctx.guild.id, "mod_role")))
+                for target, ovr in channel.overwrites.items():
+                    # dont fuck with perms above mods
+                    if isinstance(target, discord.Role) and target >= modrole:
+                        continue
+                    ovr.update(send_messages=False, send_messages_in_threads=False, create_private_threads=False,
+                               create_public_threads=False)
+                    await channel.set_permissions(target, overwrite=ovr, reason="Channel lock")
+                if not allow_mods_to_speak:
+                    modovrs = channel.overwrites_for(modrole)
+                    modovrs.update(send_messages=False, send_messages_in_threads=False, create_private_threads=False,
+                                   create_public_threads=False)
+                    await channel.set_permissions(target, overwrite=modovrs, reason="Channel lock")
+                # reply!
+                await modlog.modlog(f"{ctx.author.mention} (`@{ctx.author}`) locked {channel.mention} (`#{channel}`)",
+                                    ctx.guild.id, modid=ctx.author.id)
+                await ctx.reply(f"✔ Locked channel")
+            else:  # locked, need to unlock
+                data = json.loads(row[0])
+                logger.debug(data)
+                # delete any excess perms
+                for target, override in channel.overwrites.items():
+                    if target.id in [int(kid) for kid in data.keys()]:
+                        try:
+                            await channel.set_permissions(target, overwrite=None, reason="Channel unlock")
+                        except (discord.Forbidden, discord.HTTPException, discord.NotFound) as e:
+                            logger.debug(e)
+                # restore original permissions
+                for k, v in data.items():
+                    if (target := channel.guild.get_role(int(k))) is None:
+                        if (target := channel.guild.get_member(int(k))) is None:
+                            continue
+                    overwrite = discord.PermissionOverwrite.from_pair(discord.Permissions(v['allow']),
+                                                                      discord.Permissions(v['deny']))
+                    try:
+                        await channel.set_permissions(target, overwrite=overwrite, reason="Channel unlock")
+                    except (discord.Forbidden, discord.HTTPException, discord.NotFound) as e:
+                        logger.debug(e)
+                # update db
+                await database.db.execute("DELETE FROM lockedchannelperms WHERE guild=? AND channel=?",
+                                          (channel.guild.id, channel.id))
+                await database.db.commit()
+                # reply!
+                await modlog.modlog(f"{ctx.author.mention} (`@{ctx.author}`) unlocked {channel.mention} (`#{channel}`)",
+                                    ctx.guild.id, modid=ctx.author.id)
+                await ctx.reply(f"✔ Unlocked channel")
+
+    @mod_only()
+    @commands.command()
+    async def lock(self, ctx: commands.Context,
+                   channel: typing.Optional[typing.Union[discord.TextChannel, discord.Thread]] = None):
+        """
+        shortcut command for locking text channels or threads
+        performs m.lockthread on threads and m.lockchannel on channels
+        :param ctx:
+        :param channel: text channel or thread to lock other than the current one.
+        """
         if channel is None:
             channel = ctx.channel
-        perms = {}
-        for role, ovr in channel.overwrites.items():
-            allow, deny = ovr.pair()
-            perms[role.id] = {'allow': allow.value, 'deny': deny.value}
-        perms = json.dumps(perms)
+        if isinstance(channel, discord.TextChannel):
+            cmd: commands.Command = self.bot.get_command("lockchannel")
+        else:
+            cmd: commands.Command = self.bot.get_command("lockthread")
+        if await cmd.can_run(ctx):
+            await cmd.__call__(ctx, channel)
+        else:
+            await ctx.reply(f"❌ Failed to lock channel.")
 
 
 # @commands.is_owner()

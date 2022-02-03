@@ -94,6 +94,7 @@ def list_of_datetimes_to_xp(inp: list[datetime.datetime], time_between_xp: float
 
 
 class ExperienceCog(commands.Cog, name="Experience"):
+    """Commands to allow users to gain/manage 'XP' by being active"""
     def __init__(self, bot):
         self.bot: commands.Bot = bot
         # var and not db for performance and cause it doesnt really matter if its lost

@@ -1,17 +1,18 @@
 import datetime
-import typing
 
-import aiosqlite
 import nextcord as discord
 from nextcord.ext import commands
 
+import database
 import moderation
 import modlog
 import scheduler
 from clogs import logger
-import database
+
 
 class BirthdayCog(commands.Cog, name="Birthday Commands"):
+    """Commands for automatically creating channels to celebrate users's birthdays!"""
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -35,8 +36,8 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
             return
         # cancel all existing birthday events
         async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.user\")=? "
-                              "AND eventtype=?",
-                              (ctx.author.id, "birthday")) as cur:
+                                       "AND eventtype=?",
+                                       (ctx.author.id, "birthday")) as cur:
             async for event in cur:
                 await scheduler.canceltask(event[0])
         # insert birthday into db
@@ -82,7 +83,7 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
 
     @commands.command(hidden=True)
     @commands.is_owner()
-    async def setotherbirthday(self, ctx: commands.Context, user: discord.User,  year: int, month: int, day: int,
+    async def setotherbirthday(self, ctx: commands.Context, user: discord.User, year: int, month: int, day: int,
                                tz: float = 0):
         """
         set someone else's birthday
@@ -103,8 +104,8 @@ class BirthdayCog(commands.Cog, name="Birthday Commands"):
             return
         # cancel all existing birthday events
         async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.user\")=? "
-                              "AND eventtype=?",
-                              (user.id, "birthday")) as cur:
+                                       "AND eventtype=?",
+                                       (user.id, "birthday")) as cur:
             async for event in cur:
                 await scheduler.canceltask(event[0])
         # insert birthday into db

@@ -1,5 +1,3 @@
-import typing
-
 import nextcord as discord
 from nextcord.ext import commands
 
@@ -12,7 +10,7 @@ class ThreadUtilsCog(commands.Cog, name="Thread Utils"):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=["lock"])
+    @commands.command()
     @commands.has_guild_permissions(manage_threads=True)
     @commands.bot_has_guild_permissions(manage_threads=True)
     async def lockthread(self, ctx: commands.Context, thread: discord.Thread = None):
@@ -27,6 +25,7 @@ class ThreadUtilsCog(commands.Cog, name="Thread Utils"):
             else:
                 await ctx.reply(f"Run this command inside a thread or mention a thread.")
                 return
+        await ctx.reply(f"✔ Locking thread")
         await thread.edit(locked=True, archived=True)
 
     @commands.command(aliases=["archive"])
