@@ -124,8 +124,11 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
 
     @staticmethod
     def msgscore(msg: discord.Message):
-        upvote_reactions = discord.utils.get(msg.reactions, emoji__id=830090068961656852)
-        downvote_reactions = discord.utils.get(msg.reactions, emoji__id=830090093788004352)
+        # discord.utils.get errors if objetc doesnt have attr (some reactions arent emoji objects but unicode str)
+        upvote_reactions = discord.utils.find(lambda x: hasattr(x.emoji, "id") and x.emoji.id == 830090068961656852,
+                                              msg.reactions)
+        downvote_reactions = discord.utils.find(lambda x: hasattr(x.emoji, "id") and x.emoji.id == 830090093788004352,
+                                                msg.reactions)
         score = (0 if upvote_reactions is None else upvote_reactions.count) - \
                 (0 if downvote_reactions is None else downvote_reactions.count)
         # msgscore is used as a sorting function. the negative timestamp means that for duplicate scores itll choose
@@ -178,11 +181,12 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                     await ctx.reply(
                         f"{bannermessage.author.mention}'s banner will be chosen with a score of **{msgscore}**!",
                         file=discord.File(io.BytesIO(resizedimage), filename="banner.png"),
-                        )
+                    )
                 else:
                     await server.edit(banner=resizedimage)
-                    await ctx.reply(f"{bannermessage.author.mention}'s banner was chosen with a score of **{msgscore}**!",
-                                    file=discord.File(io.BytesIO(resizedimage), filename="banner.png"))
+                    await ctx.reply(
+                        f"{bannermessage.author.mention}'s banner was chosen with a score of **{msgscore}**!",
+                        file=discord.File(io.BytesIO(resizedimage), filename="banner.png"))
                     await bannermessage.delete()
 
 

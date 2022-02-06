@@ -212,7 +212,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "nextcord"
-version = "2.0.0a6"
+version = "2.0.0a7"
 description = "A Python wrapper for the Discord API forked from discord.py"
 category = "main"
 optional = false
@@ -231,7 +231,7 @@ voice = ["PyNaCl (>=1.3.0,<1.5)"]
 type = "git"
 url = "https://github.com/nextcord/nextcord.git"
 reference = "master"
-resolved_reference = "a56bd5f99b4c04250429be4ad2d9a223066d7963"
+resolved_reference = "7e232132034434f16bcecb91506453849a07c4cc"
 
 [[package]]
 name = "oauthlib"
