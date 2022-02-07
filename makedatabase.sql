@@ -1,4 +1,3 @@
--- we don't know how to generate root <with-no-name> (class Root) :(
 create table auto_punishment
 (
     guild               int  not null,
@@ -35,6 +34,31 @@ create table booster_roles
         unique (guild, user)
 );
 
+create table experience
+(
+    user       int not null,
+    guild      int not null,
+    experience float default 0,
+    constraint experience_pk
+        primary key (user, guild)
+);
+
+create table guild_xp_exclusions
+(
+    guild         integer not null,
+    userorchannel integer not null,
+    mod_set       bool default false not null,
+    constraint guild_xp_exclusions_pk
+        primary key (guild, userorchannel)
+);
+
+create table lockedchannelperms
+(
+    guild   integer not null,
+    channel integer not null,
+    data    text
+);
+
 create table macros
 (
     server  int  not null,
@@ -65,18 +89,35 @@ create table schedule
 
 create table server_config
 (
-    guild              int not null
+    guild               int not null
         constraint server_config_pk
             primary key,
-    mod_role           int,
-    log_channel        int,
-    ban_appeal_link    text,
-    thin_ice_role      int,
-    thin_ice_threshold int  default 1 not null,
-    birthday_category  int,
-    booster_roles      bool default 0 not null,
-    booster_role_hoist int,
-    bulk_log_channel   int
+    mod_role            int,
+    log_channel         int,
+    ban_appeal_link     text,
+    thin_ice_role       int,
+    thin_ice_threshold  int   default 1 not null,
+    birthday_category   int,
+    booster_roles       bool  default 0 not null,
+    booster_role_hoist  int,
+    bulk_log_channel    int,
+    time_between_xp     float default 60 not null,
+    xp_change_per_level float default 30 not null
+);
+
+create table sqlite_master
+(
+    type     text,
+    name     text,
+    tbl_name text,
+    rootpage int,
+    sql      text
+);
+
+create table sqlite_sequence
+(
+    name,
+    seq
 );
 
 create table thin_ice
