@@ -1,17 +1,15 @@
 import asyncio
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
-import aiosqlite
 import humanize
 import nextcord as discord
 from aioscheduler import TimedScheduler
 from nextcord.ext import commands
 
+import database
 import modlog
 from clogs import logger
-import database
 
 scheduler = TimedScheduler(prefer_utc=True)
 botcopy: commands.Bot
@@ -110,7 +108,7 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
             createdchannels = []
             for guild in botcopy.guilds:
                 async with database.db.execute("SELECT birthday_category FROM server_config WHERE guild=?",
-                                      (guild.id,)) as cur:
+                                               (guild.id,)) as cur:
                     bcategory = await cur.fetchone()
                 if bcategory is not None:
                     member = guild.get_member(eventdata["user"])
@@ -122,7 +120,8 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
                                                                                   f"'s birthday.")
                         createdchannels.append(bchannel.id)
                         await bchannel.send(f"Happy {humanize.ordinal(age)} Birthday {member.mention}!!",
-                                            allowed_mentions=discord.AllowedMentions(everyone=False, roles=False))
+                                            allowed_mentions=discord.AllowedMentions(everyone=False, roles=False,
+                                                                                     users=True, replied_user=True))
             # schedule next birthday event
             thisyear = now.year
             nextbirthday = birthday
@@ -153,7 +152,7 @@ async def schedule(time: datetime, eventtype: str, eventdata: dict):
         await run_event(None, eventtype, eventdata)
 
     async with database.db.execute("INSERT INTO schedule (eventtime, eventtype, eventdata) VALUES (?,?,?)",
-                          (time.timestamp(), eventtype, json.dumps(eventdata))) as cursor:
+                                   (time.timestamp(), eventtype, json.dumps(eventdata))) as cursor:
         lri = cursor.lastrowid
         timef = time.astimezone(tz=timezone.utc).replace(tzinfo=None)
         task = scheduler.schedule(run_event(lri, eventtype, eventdata), timef)
