@@ -17,6 +17,7 @@ from database import InitDB
 from errhandler import ErrorHandler
 from funcommands import FunCommands
 from funnybanner import FunnyBanner
+from gatekeep import GateKeep
 from helpcommand import HelpCommand
 from macro import MacroCog
 from moderation import ModerationCog
@@ -95,6 +96,7 @@ bot.add_cog(BirthdayCog(bot))
 bot.add_cog(NitroRolesCog(bot))
 bot.add_cog(BulkLog(bot))
 bot.add_cog(ExperienceCog(bot))
+bot.add_cog(GateKeep(bot))
 
 
 def logcommand(cmd):
