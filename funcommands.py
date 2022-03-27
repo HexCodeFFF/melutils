@@ -1,7 +1,24 @@
 import random
+import re
+import typing
 
 import nextcord as discord
 from nextcord.ext import commands
+
+
+def stringshuffle(string):
+    return "".join(random.sample(string, len(string)))
+
+
+def shuffleword(word, threshold=3):
+    if len(word) <= threshold:
+        return stringshuffle(word)
+    else:
+        return word[0] + stringshuffle(word[1:-1]) + word[-1]
+
+
+def wordshuffle(words, threshold=3):
+    return re.sub(r"\w+", lambda x: shuffleword(x.group(0), threshold), words)
 
 
 class FunCommands(commands.Cog, name="Fun"):
@@ -180,6 +197,19 @@ class FunCommands(commands.Cog, name="Fun"):
                 f"{p}{c}"
             ]))
         await ctx.reply(f"🏳️‍🌈 {' '.join(out)}")
+
+    @commands.command(aliases=["drunktype", "shuffle", "shuffletype"])
+    async def drunk(self, ctx: commands.Context, threshold: typing.Optional[int] = 4, *, text: str):
+        """
+        teyps your txet ni a dkeurnn wya
+
+        :param ctx: dc
+        :param threshold: how long a word must be to force the first and last characters to be the same
+        :param text: the text to drunk type
+        :return: yuro txet
+        """
+        assert threshold >= 0
+        await ctx.reply(wordshuffle(text, threshold))
 
 
 '''
