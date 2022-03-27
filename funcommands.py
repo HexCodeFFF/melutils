@@ -9,7 +9,7 @@ from nextcord.ext import commands
 def stringshuffle(string):
     if len(string) <= 1:
         return string
-    while shstring := "".join(random.sample(string, len(string))) == string:
+    while (shstring := "".join(random.sample(string, len(string)))) == string:
         pass
     return shstring
 
@@ -203,7 +203,7 @@ class FunCommands(commands.Cog, name="Fun"):
         await ctx.reply(f"🏳️‍🌈 {' '.join(out)}")
 
     @commands.command(aliases=["drunktype", "shuffle", "shuffletype"])
-    async def drunk(self, ctx: commands.Context, threshold: typing.Optional[int] = 3, *, text: str):
+    async def drunk(self, ctx: commands.Context, threshold: typing.Optional[int] = 4, *, text: str):
         """
         teyps your txet ni a dkeurnn wya
 
