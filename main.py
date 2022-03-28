@@ -1,4 +1,5 @@
 import glob
+import itertools
 import os
 import sqlite3
 
@@ -70,13 +71,19 @@ async def safe_reply(self: discord.Message, *args, **kwargs) -> discord.Message:
         return await self.channel.send(*args, **kwargs)
 
 
+def allcasecombinations(s):
+    # https://stackoverflow.com/a/11144539/9044183
+    return map(''.join, itertools.product(*zip(s.upper(), s.lower())))
+
+
 # override .reply()
 discord.Message.reply = safe_reply
 
 intents = discord.Intents.default()
 intents.members = True
 activity = discord.Activity(name=f"you | {config.command_prefix}help", type=discord.ActivityType.watching)
-bot = commands.Bot(command_prefix=config.command_prefix, help_command=None, case_insensitive=True, activity=activity,
+bot = commands.Bot(command_prefix=allcasecombinations(config.command_prefix), help_command=None, case_insensitive=True,
+                   activity=activity,
                    intents=intents, allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=False,
                                                                              replied_user=True))
 bot.add_cog(InitDB(bot))
