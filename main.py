@@ -72,8 +72,8 @@ async def safe_reply(self: discord.Message, *args, **kwargs) -> discord.Message:
 
 
 def allcasecombinations(s):
-    # https://stackoverflow.com/a/11144539/9044183
-    return list(set(map(''.join, itertools.product(*zip(s.upper(), s.lower())))))
+    # https://stackoverflow.com/a/71655076/9044183
+    return list({''.join(x) for x in itertools.product(*zip(s.upper(), s.lower()))})
 
 
 # override .reply()
