@@ -131,6 +131,9 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
     @commands.command()
     async def findinbible(self, ctx: commands.Context, limit: typing.Optional[int] = 1, *, words: str):
         """find a specific phrase in the bible"""
+        if not os.path.isfile("bible.sqlite"):
+            await ctx.reply("Bible DB not setup, please run `m.buildbibledb`.")
+            return
         assert 0 < limit < 6
         async with aiosqlite.connect("bible.sqlite") as biblecon:
             async with biblecon.execute("SELECT verse, short_trns, content FROM verses "
@@ -153,6 +156,9 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
     @commands.command()
     async def countinbible(self, ctx: commands.Context, *, words: str):
         """count how many times a phrase occurs among 14 bible translations"""
+        if not os.path.isfile("bible.sqlite"):
+            await ctx.reply("Bible DB not setup, please run `m.buildbibledb`.")
+            return
         async with aiosqlite.connect("bible.sqlite") as biblecon:
             async with biblecon.execute("SELECT SUM((LENGTH(content) - LENGTH(REPLACE(content, ?, ''))) / "
                                         "LENGTH(?)) FROM verses",
