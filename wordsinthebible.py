@@ -137,7 +137,7 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
         assert 0 < limit < 6
         async with aiosqlite.connect("bible.sqlite") as biblecon:
             async with biblecon.execute("SELECT verse, short_trns, content FROM verses "
-                                        "WHERE content LIKE ('%' || ? || '%') GROUP BY verse LIMIT ?",
+                                        "WHERE content LIKE ('%' || ? || '%') GROUP BY verse ORDER BY random() LIMIT ?",
                                         (words, limit)) as cur:
                 res = await cur.fetchall()
         if not res:
