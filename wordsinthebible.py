@@ -126,7 +126,8 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
 
             await ctx.reply(f"{len(inbible)}/{len(uniquewords)} ({round((len(inbible) / len(uniquewords)) * 100)}%)"
                             f" are in the bible.\n"
-                            f"found {len(notinbible)} words not in the bible:\n{out}")
+                            f"found {len(notinbible)} word{'' if len(notinbible) == 1 else 's'} not in the bible:"
+                            f"\n{out}")
 
     @commands.command()
     async def findinbible(self, ctx: commands.Context, limit: typing.Optional[int] = 1, *, words: str):
