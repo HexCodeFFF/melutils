@@ -26,6 +26,7 @@ from modlog import ModLogInitCog
 from nitroroles import NitroRolesCog
 from threadutils import ThreadUtilsCog
 from utilitycommands import UtilityCommands
+from wordsinthebible import BibleCog
 from xp import ExperienceCog
 
 if not os.path.exists(config.temp_dir.rstrip("/")):
@@ -104,6 +105,7 @@ bot.add_cog(NitroRolesCog(bot))
 bot.add_cog(BulkLog(bot))
 bot.add_cog(ExperienceCog(bot))
 bot.add_cog(GateKeep(bot))
+bot.add_cog(BibleCog(bot))
 
 
 def logcommand(cmd):

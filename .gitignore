@@ -3,3 +3,5 @@ config.py
 __pycache__
 .idea
 database.sqlite
+bible.sqlite
+bibles.xlsx

@@ -139,6 +139,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "et-xmlfile"
+version = "1.1.0"
+description = "An implementation of lxml.xmlfile for the standard library"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "faker"
 version = "12.3.3"
 description = "Faker is a Python package that generates fake data for you."
@@ -212,7 +220,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "nextcord"
-version = "2.0.0a9"
+version = "2.0.0a10"
 description = "A Python wrapper for the Discord API forked from discord.py"
 category = "main"
 optional = false
@@ -231,7 +239,7 @@ voice = ["PyNaCl (>=1.3.0,<1.5)"]
 type = "git"
 url = "https://github.com/nextcord/nextcord.git"
 reference = "master"
-resolved_reference = "0b66ccbdf8468d459b350f279da92635078fe5e2"
+resolved_reference = "b10192ebebaafc5a22a20fd288b7af017b09a468"
 
 [[package]]
 name = "oauthlib"
@@ -245,6 +253,17 @@ python-versions = ">=3.6"
 rsa = ["cryptography (>=3.0.0)"]
 signals = ["blinker (>=1.4.0)"]
 signedtoken = ["cryptography (>=3.0.0)", "pyjwt (>=2.0.0,<3)"]
+
+[[package]]
+name = "openpyxl"
+version = "3.0.9"
+description = "A Python library to read/write Excel 2010 xlsx/xlsm files"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+et-xmlfile = "*"
 
 [[package]]
 name = "pillow"
@@ -394,7 +413,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "4bcfe7d11bc701d6f1b4d131bbacfb7ae3b6cc40a9efd083bb65e084e7c9f6d4"
+content-hash = "f597c52fa311206095bde6aa6f7d68c6dcc90c31bce5245eff6e7a3329a00927"
 
 [metadata.files]
 aiofiles = [
@@ -517,6 +536,10 @@ docstring-parser = [
 emojis = [
     { file = "emojis-0.6.0-py3-none-any.whl", hash = "sha256:7da34c8a78ae262fd68cef9e2c78a3c1feb59784489eeea0f54ba1d4b7111c7c" },
     { file = "emojis-0.6.0.tar.gz", hash = "sha256:bf605d1f1a27a81cd37fe82eb65781c904467f569295a541c33710b97e4225ec" },
+]
+et-xmlfile = [
+    { file = "et_xmlfile-1.1.0-py3-none-any.whl", hash = "sha256:a2ba85d1d6a74ef63837eed693bcb89c3f752169b0e3e7ae5b16ca5e1b3deada" },
+    { file = "et_xmlfile-1.1.0.tar.gz", hash = "sha256:8eb9e2bc2f8c97e37a2dc85a09ecdcdec9d8a396530a6d5a33b30b9a92da0c5c" },
 ]
 faker = [
     { file = "Faker-12.3.3-py3-none-any.whl", hash = "sha256:a7244b7f25503811072122d98918f445df276ea80c5e38448f51a3b765665ece" },
@@ -660,6 +683,10 @@ nextcord = []
 oauthlib = [
     { file = "oauthlib-3.2.0-py3-none-any.whl", hash = "sha256:6db33440354787f9b7f3a6dbd4febf5d0f93758354060e802f6c06cb493022fe" },
     { file = "oauthlib-3.2.0.tar.gz", hash = "sha256:23a8208d75b902797ea29fd31fa80a15ed9dc2c6c16fe73f5d346f83f6fa27a2" },
+]
+openpyxl = [
+    { file = "openpyxl-3.0.9-py2.py3-none-any.whl", hash = "sha256:8f3b11bd896a95468a4ab162fc4fcd260d46157155d1f8bfaabb99d88cfcf79f" },
+    { file = "openpyxl-3.0.9.tar.gz", hash = "sha256:40f568b9829bf9e446acfffce30250ac1fa39035124d55fc024025c41481c90f" },
 ]
 pillow = [
     { file = "Pillow-9.0.1-1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:a5d24e1d674dd9d72c66ad3ea9131322819ff86250b30dc5821cbafcfa0b96b4" },
