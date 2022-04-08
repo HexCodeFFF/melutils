@@ -122,7 +122,7 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
                 else:
                     return w
 
-            out = re.sub("[a-zA-Z]+", boldnonbiblicalwords, words)
+            out = re.sub("[a-zA-Z]+", boldnonbiblicalwords, words, flags=re.RegexFlag.IGNORECASE)
 
             await ctx.reply(f"{len(inbible)}/{len(uniquewords)} ({round((len(inbible) / len(uniquewords)) * 100)}%)"
                             f" are in the bible.\n"
@@ -146,7 +146,8 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
             out = []
             for row in res:
                 verse, short_trns, content = row
-                content = re.sub(re.escape(words), lambda x: f"**{x.group(0)}**", content)
+                content = re.sub(re.escape(words), lambda x: f"**{x.group(0)}**", content,
+                                 flags=re.RegexFlag.IGNORECASE)
                 out.append(f"{verse} ({short_trns})\n> {content}")
             out = "\n".join(out)
             if len(out) > 2000:
