@@ -161,9 +161,10 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
             await ctx.reply("Bible DB not setup, please run `m.buildbibledb`.")
             return
         async with aiosqlite.connect("bible.sqlite") as biblecon:
-            async with biblecon.execute("SELECT SUM((LENGTH(content) - LENGTH(REPLACE(content, ?, ''))) / "
-                                        "LENGTH(?)) FROM verses",
-                                        (words, words)) as cur:
+            async with biblecon.execute(
+                    "SELECT SUM((LENGTH(content) - LENGTH(REPLACE(LOWER(content), LOWER(?), ''))) / "
+                    "LENGTH(?)) FROM verses",
+                    (words, words)) as cur:
                 sm = (await cur.fetchone())[0]
         await ctx.reply(f"Found this phrase {sm} time{'' if sm == 1 else 's'} among 14 English Bible translations.\n"
                         f"Average of {round(sm / 14, 1)} per translation. See `m.findinbible` to see what they are.")
