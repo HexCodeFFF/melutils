@@ -122,14 +122,15 @@ class ExperienceCog(commands.Cog, name="Experience"):
                                            (message.guild.id,)) as cur:
                 cur: aiosqlite.Cursor
                 timeout = await cur.fetchone()
-            # return default
-            if timeout is None:
+            if timeout and timeout[0]:
+                timeout = timeout[0]
+            else:  # sensible default
                 timeout = 60
             # make sure the minimum timeout has passed
             sincelastmsg = discord.utils.utcnow() - self.last_message_in_guild[f"{message.author.id}."
                                                                                f"{message.guild.id}"]
-            if sincelastmsg.total_seconds() < timeout[0]:
-                logger.debug(f"{message.author} has to wait {round(timeout[0] - sincelastmsg.total_seconds(), 1):g}s"
+            if sincelastmsg.total_seconds() < timeout:
+                logger.debug(f"{message.author} has to wait {round(timeout - sincelastmsg.total_seconds(), 1):g}s"
                              f" before gaining XP again in {message.guild}.")
                 return
         # check if user or channel is excluded from gaining XP
