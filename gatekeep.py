@@ -6,6 +6,7 @@ from nextcord.ext import commands
 
 import database
 import modlog
+from clogs import logger
 from moderation import update_server_config, mod_only
 
 
@@ -13,18 +14,42 @@ class GateKeep(commands.Cog):
     def __init__(self, bot):
         self.bot: commands.Bot = bot
 
+    # @commands.Cog.listener()
+    # async def on_member_remove(self, member: discord.Member):
+    #     async with database.db.execute("SELECT thread FROM members_to_verify WHERE guild=? AND member=?",
+    #                                    (member.guild.id, member.id)) as cur:
+    #         res = await cur.fetchone()
+    #         if res and res[0]:
+    #             th = member.guild.get_thread(res[0])
+    #             await th.send(f"User left, locking thread.")
+    #             await th.remove_user(member)
+    #             await th.edit(archived=True, locked=True)
+    #             await database.db.execute("DELETE FROM members_to_verify guild=? AND member=?",
+    #                                       (member.guild.id, member.id))
+    #             await database.db.commit()
+
     @commands.Cog.listener()
-    async def on_member_remove(self, member: discord.Member):
+    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
+        pass
         async with database.db.execute("SELECT thread FROM members_to_verify WHERE guild=? AND member=?",
-                                       (member.guild.id, member.id)) as cur:
+                                       (payload.guild_id, payload.user.id)) as cur:
             res = await cur.fetchone()
             if res and res[0]:
-                th = member.guild.get_thread(res[0])
-                await th.send(f"User left, locking thread.")
-                await th.remove_user(member)
-                await th.edit(archived=True, locked=True)
+                th = self.bot.get_guild(payload.guild_id).get_thread(int(res[0]))
+                if th is None:
+                    try:
+                        th = await self.bot.get_guild(payload.guild_id).fetch_channel(int(res[0]))
+                    except discord.NotFound:
+                        logger.info(f"thread {res[0]} not found, skipping delete")
+                        return
+                try:
+                    await th.delete()
+                except discord.HTTPException:
+                    await th.send(f"User left, locking thread.")
+                    await th.remove_user(payload.user)
+                    await th.edit(archived=True, locked=True)
                 await database.db.execute("DELETE FROM members_to_verify guild=? AND member=?",
-                                          (member.guild.id, member.id))
+                                          (payload.guild_id, payload.user.id))
                 await database.db.commit()
 
     @commands.Cog.listener()
@@ -52,7 +77,7 @@ class GateKeep(commands.Cog):
 
                 asyncio.create_task(delthread())
                 # add to db
-            await database.db.execute("INSERT INTO members_to_verify (guild, member, thread) VALUES (?,?,?)",
+            await database.db.execute("REPLACE INTO members_to_verify (guild, member, thread) VALUES (?,?,?)",
                                       (member.guild.id, member.id, thread.id))
             await database.db.commit()
             # add mods and user to thread
