@@ -14,14 +14,18 @@ class GateKeep(commands.Cog):
         self.bot: commands.Bot = bot
 
     @commands.Cog.listener()
-    async def on_member_leave(self, member: discord.Member):
+    async def on_member_remove(self, member: discord.Member):
         async with database.db.execute("SELECT thread FROM members_to_verify WHERE guild=? AND member=?",
                                        (member.guild.id, member.id)) as cur:
             res = await cur.fetchone()
             if res and res[0]:
                 th = member.guild.get_thread(res[0])
+                await th.send(f"User left, locking thread.")
                 await th.remove_user(member)
                 await th.edit(archived=True, locked=True)
+                await database.db.execute("DELETE FROM members_to_verify guild=? AND member=?",
+                                          (member.guild.id, member.id))
+                await database.db.commit()
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
