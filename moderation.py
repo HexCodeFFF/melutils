@@ -75,9 +75,9 @@ async def get_server_config(guild: int, config: str):
 
 async def ban_action(user: typing.Union[discord.User, discord.Member], guild: discord.Guild,
                      ban_length: typing.Optional[timedelta], reason: str):
-    bans = [ban.user for ban in await guild.bans()]
-    if user in bans:
-        return False
+    async for banned in guild.bans():
+        if banned.user.id == user.id:
+            return False
     htime = humanize.precisedelta(ban_length)
     if await is_mod(guild, user):
         await modlog.modlog(f"Tried to ban {user.mention} (`{user}`), but they are a mod.", guild.id, user.id)
