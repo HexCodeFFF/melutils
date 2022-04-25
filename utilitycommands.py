@@ -11,6 +11,7 @@ import zipfile
 from collections import defaultdict
 from datetime import datetime, timezone
 
+import aiofiles
 import aiohttp
 import humanize
 import nextcord as discord
@@ -545,6 +546,51 @@ class UtilityCommands(commands.Cog, name="Utility"):
     async def sendallstickers(self, ctx: commands.Context):
         msgs = await asyncio.gather(*[ctx.send(stickers=[sticker]) for sticker in ctx.guild.stickers])
         await asyncio.gather(*[message.add_reaction("✅") for message in msgs])
+
+    @staticmethod
+    def votes(msg: discord.Message):
+        votes = discord.utils.find(lambda x: x.emoji == '✅', msg.reactions)
+        return 0 if votes is None else votes.count
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def countvotes(self, ctx: commands.Context):
+        await ctx.message.delete()
+        msgs = await ctx.history(limit=None).flatten()
+        if not msgs:
+            await ctx.reply("No messages in channel")
+            return
+        msgs.sort(key=self.votes, reverse=True)
+
+        async with aiofiles.open("votetemplate.html", "r") as f:
+            template = await f.read()
+
+        out = ""
+        for msg in msgs:
+            votes = self.votes(msg) - 1
+            if msg.stickers:
+                sticker = msg.stickers[0]
+                name = sticker.name
+                url = sticker.url
+            else:
+                try:
+                    emoj = await commands.PartialEmojiConverter().convert(ctx, msg.content)
+                except commands.PartialEmojiConversionFailure:
+                    continue
+                name = emoj.name
+                url = emoj.url
+            out += f"""
+            <tr>
+                <td><img src="{url}" alt="{name}" height="32"></td>
+                <td>{name}</td>
+                <td>{votes}</td>
+            </tr>
+            """
+        out = template.replace("REPLACEME", out)
+        with io.BytesIO() as buf:
+            buf.write(bytes(out, encoding='utf8'))
+            buf.seek(0)
+            await ctx.author.send(file=discord.File(buf, filename="out.html"))
 
     @commands.command()
     async def id(self, ctx: commands.Context,
