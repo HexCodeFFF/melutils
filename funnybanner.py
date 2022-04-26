@@ -4,6 +4,7 @@ import io
 import random
 import typing
 
+import PIL.GifImagePlugin
 import aiohttp
 import nextcord as discord
 import twitter
@@ -37,15 +38,110 @@ async def saveurl(url) -> bytes:
                 resp.raise_for_status()
 
 
-async def resize_url(url: str) -> typing.Optional[bytes]:
+def extract_and_resize_frames(im: PIL.GifImagePlugin.GifImageFile, resize_to):
+    """
+    Iterate the GIF, extracting each frame and resizing them
+
+    Returns:
+        An array of all frames
+    """
+
+    """
+    Pre-process pass over the image to determine the mode (full or additive).
+    Necessary as assessing single frames isn't reliable. Need to know the mode
+    before processing all frames.
+    """
+    mode = "full"
+    try:
+        while True:
+            if im.tile:
+                tile = im.tile[0]
+                update_region = tile[1]
+                update_region_dimensions = update_region[2:]
+                if update_region_dimensions != im.size:
+                    mode = 'partial'
+                    break
+            im.seek(im.tell() + 1)
+    except EOFError:
+        pass
+
+    im.seek(0)
+
+    i = 0
+    p = im.getpalette()
+    last_frame = im.convert('RGBA')
+
+    all_frames = []
+
+    try:
+        while True:
+            # print("saving %s (%s) frame %d, %s %s" % (path, mode, i, im.size, im.tile))
+
+            '''
+            If the GIF uses local colour tables, each frame will have its own palette.
+            If not, we need to apply the global palette to the new frame.
+            '''
+            try:
+                if not im.getpalette():
+                    im.putpalette(p)
+            except ValueError:
+                pass
+
+            new_frame = Image.new('RGBA', im.size)
+
+            '''
+            Is this file a "partial"-mode GIF where frames update a region of a different size to the entire image?
+            If so, we need to construct the new frame by pasting it on top of the preceding frames.
+            '''
+            if mode == 'partial':
+                new_frame.paste(last_frame)
+
+            new_frame.paste(im, (0, 0), im.convert('RGBA'))
+
+            all_frames.append(new_frame.resize(resize_to, Image.BICUBIC))
+
+            i += 1
+            last_frame = new_frame
+            im.seek(im.tell() + 1)
+    except EOFError:
+        pass
+
+    return all_frames
+
+
+def resize_gif(im: Image.Image, save_as, resize_to):
+    """
+    Resizes the GIF to a given length:
+
+    Args:
+        im: file
+        save_as (optional): Path of the resized gif. If not set, the original gif will be overwritten.
+        resize_to (optional): new size of the gif. Format: (int, int). If not set, the original GIF will be resized to
+                              half of its size.
+    """
+    all_frames = extract_and_resize_frames(im, resize_to)
+
+    if len(all_frames) == 1:
+        print("Warning: only 1 frame found")
+        all_frames[0].save(save_as, optimize=True, format="GIF")
+    else:
+        all_frames[0].save(save_as, optimize=True, save_all=True, append_images=all_frames[1:], loop=0, format="GIF",
+                           duration=im.info['duration'])
+
+
+async def resize_url(url: str) -> typing.Optional[typing.Tuple[bytes, typing.Literal["png", "gif"]]]:
     logger.debug(f"trying {url}")
     try:
         urlbytes = await saveurl(url)
         image: Image.Image = Image.open(io.BytesIO(urlbytes))
-        image = image.resize((1920, 1080), Image.BICUBIC)
+        anim = getattr(image, "is_animated", False)
         img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='PNG')
-        return img_byte_arr.getvalue()
+        if anim:
+            resize_gif(image, img_byte_arr, (192, 108))
+        else:
+            image = image.resize((1920, 1080), Image.BICUBIC)
+            image.save(img_byte_arr, format='PNG')
+        return img_byte_arr.getvalue(), "gif" if anim else "png"
     except Exception as e:
         logger.error(e, exc_info=(type(e), e, e.__traceback__))
         return None
@@ -169,7 +265,11 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                             resizedimage = await resize_url(embed.image.url)
                             if resizedimage is not None:
                                 break
-                        elif embed.url and embed.type == "image":
+                        elif embed.url and embed.type in ["image", "gifv"]:
+                            if embed.video:
+                                resizedimage = await resize_url(embed.video.url)
+                                if resizedimage is not None:
+                                    break
                             resizedimage = await resize_url(embed.url)
                             if resizedimage is not None:
                                 break
@@ -177,19 +277,25 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                     bannermessage = msg
                     break
             if resizedimage is not None:  # we found a suitable banner
+                resizedimage, ext = resizedimage
                 if preview:
                     await ctx.reply(
                         f"{bannermessage.author.mention}'s banner will be chosen with a score of **{msgscore}**!",
-                        file=discord.File(io.BytesIO(resizedimage), filename="banner.png"),
+                        file=discord.File(io.BytesIO(resizedimage), filename=f"banner.{ext}"),
                     )
                 else:
                     await server.edit(banner=resizedimage)
                     await ctx.reply(
                         f"{bannermessage.author.mention}'s banner was chosen with a score of **{msgscore}**!",
-                        file=discord.File(io.BytesIO(resizedimage), filename="banner.png"),
+                        file=discord.File(io.BytesIO(resizedimage), filename=f"banner.{ext}"),
                         allowed_mentions=discord.AllowedMentions(everyone=False, users=True, roles=False,
                                                                  replied_user=True))
                     await bannermessage.delete()
+
+    @commands.command()
+    @commands.is_owner()
+    async def resizeurl(self, ctx: commands.Context, url: str):
+        await ctx.reply(file=discord.File(io.BytesIO(await resize_url(url)), filename="url.gif"))
 
 
 '''
