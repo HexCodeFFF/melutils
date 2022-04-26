@@ -21,6 +21,7 @@ from nextcord.ext.commands import PartialEmojiConversionFailure
 from nextcord.ext.commands.cooldowns import BucketType
 
 import config
+import modlog
 import scheduler
 from clogs import logger
 from timeconverter import time_converter
@@ -140,7 +141,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
         include: typing.Tuple[discord.User, ...] = None
         exclude: typing.Tuple[discord.User, ...] = None
         oldest_first: typing.Optional[bool] = None
-        clean_purge: bool = False
+        clean: bool = True
 
     @commands.command(aliases=["apurge", "advpurge", "adp", "apg"])
     @commands.has_permissions(manage_messages=True)
@@ -156,7 +157,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
         :param include: One or more members to delete messages from as a whitelist. Incompatible with `exclude`.
         :param exclude: One or more members to not delete messages from as a blacklist. Incompatible with `include`.
         :param oldest_first: If set to True, delete messages in oldest->newest order. Defaults to True if after is specified, otherwise False.
-        :param clean_purge: Deletes the invoking command before purging and purge success command after 10 seconds.
+        :param clean: Deletes the invoking command before purging and purge success command after 10 seconds.
         """
 
         def inclfunc(m):
@@ -178,14 +179,16 @@ class UtilityCommands(commands.Cog, name="Utility"):
         for flag, value in opts:
             if flag not in ["include", "exclude", "clean_purge"] and value:
                 pargs[flag] = value
-        if opts.clean_purge:
+        if opts.clean:
             await ctx.message.delete()
         deleted = await ctx.channel.purge(**pargs)
         msg = f"{config.emojis['check']}Deleted `{len(deleted)}` message{'' if len(deleted) == 1 else 's'}!"
-        if opts.clean_purge:
+        if opts.clean:
             await ctx.send(msg, delete_after=10)
         else:
             await ctx.reply(msg)
+        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) purged {len(deleted)} message(s) from "
+                            f"{ctx.channel.mention}", ctx.guild.id, modid=ctx.author.id)
 
     class SelectiveCloneSettings(commands.FlagConverter, case_insensitive=True):
         limit: typing.Optional[int] = None
