@@ -1,8 +1,6 @@
-import typing
-
-import nextcord as discord
+import discord
 import docstring_parser
-from nextcord.ext import commands
+from discord.ext import commands
 
 import config
 

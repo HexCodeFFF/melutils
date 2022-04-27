@@ -8,7 +8,7 @@ import aiosqlite
 import discord.utils
 import openpyxl
 import openpyxl.cell
-from nextcord.ext import commands
+from discord.ext import commands
 
 
 async def request(url: str):

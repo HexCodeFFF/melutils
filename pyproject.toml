@@ -7,7 +7,7 @@ license = "GPL-3"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-nextcord = { git = "https://github.com/nextcord/nextcord.git" }
+"discord.py" = { git = "https://github.com/Rapptz/discord.py.git", allow-prereleases = true, extras = ["speed"] }
 humanize = { git = "https://github.com/HexCodeFFF/humanize.git" }
 si-prefix = { git = "https://github.com/HexCodeFFF/si-prefix.git" }
 coloredlogs = "^15.0.1"

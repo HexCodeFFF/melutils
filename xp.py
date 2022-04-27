@@ -8,10 +8,10 @@ import typing
 from collections import defaultdict
 
 import aiosqlite
-import nextcord as discord
+import discord
 import si_prefix
-from nextcord.ext import commands
-from nextcord.ext.commands import BucketType
+from discord.ext import commands
+from discord.ext.commands import BucketType
 
 import database
 import moderation
@@ -171,11 +171,11 @@ class ExperienceCog(commands.Cog, name="Experience"):
             # channels += list(sum([l for l in list_of_lists_of_athreads if isinstance(l, list)], []))
             for channel in ctx.guild.text_channels:
                 try:
-                    channels += await channel.archived_threads(private=True, joined=True, limit=None).flatten()
+                    channels += [th async for th in channel.archived_threads(private=True, joined=True, limit=None)]
                 except discord.HTTPException:
                     pass
                 try:
-                    channels += await channel.archived_threads(limit=None).flatten()
+                    channels += [ch async for ch in channel.archived_threads(limit=None)]
                 except discord.HTTPException:
                     pass
             # get exclusions and exempt them from scanning

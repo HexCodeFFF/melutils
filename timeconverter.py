@@ -1,7 +1,7 @@
 import re
 from datetime import timedelta
 
-from nextcord.ext import commands
+from discord.ext import commands
 
 time_regex = re.compile(r"(\d{1,5}(?:[.,]?\d{1,5})?)([smhdwy])")
 time_dict = {"h": 3600, "s": 1, "m": 60, "d": 86400, "w": 604800, "y": 86400 * 365}

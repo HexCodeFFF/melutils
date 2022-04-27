@@ -13,12 +13,12 @@ from datetime import datetime, timezone
 
 import aiofiles
 import aiohttp
+import discord
 import humanize
-import nextcord as discord
+from discord.ext import commands
+from discord.ext.commands import PartialEmojiConversionFailure
+from discord.ext.commands.cooldowns import BucketType
 from faker import Faker
-from nextcord.ext import commands
-from nextcord.ext.commands import PartialEmojiConversionFailure
-from nextcord.ext.commands.cooldowns import BucketType
 
 import config
 import modlog
@@ -579,7 +579,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
     @commands.is_owner()
     async def countvotes(self, ctx: commands.Context):
         await ctx.message.delete()
-        msgs = await ctx.history(limit=None).flatten()
+        msgs = [msg async for msg in ctx.history(limit=None)]
         if not msgs:
             await ctx.reply("No messages in channel")
             return

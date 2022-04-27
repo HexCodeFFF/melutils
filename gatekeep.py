@@ -1,8 +1,7 @@
 import asyncio
 
-import nextcord
-import nextcord as discord
-from nextcord.ext import commands
+import discord
+from discord.ext import commands
 
 import database
 import modlog
@@ -29,16 +28,15 @@ class GateKeep(commands.Cog):
     #             await database.db.commit()
 
     @commands.Cog.listener()
-    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
-        pass
+    async def on_member_remove(self, member: discord.Member):
         async with database.db.execute("SELECT thread FROM members_to_verify WHERE guild=? AND member=?",
-                                       (payload.guild_id, payload.user.id)) as cur:
+                                       (member.guild.id, member.id)) as cur:
             res = await cur.fetchone()
             if res and res[0]:
-                th = self.bot.get_guild(payload.guild_id).get_thread(int(res[0]))
+                th = member.guild.get_thread(int(res[0]))
                 if th is None:
                     try:
-                        th = await self.bot.get_guild(payload.guild_id).fetch_channel(int(res[0]))
+                        th = await member.guild.fetch_channel(int(res[0]))
                     except discord.NotFound:
                         logger.info(f"thread {res[0]} not found, skipping delete")
                         return
@@ -46,10 +44,10 @@ class GateKeep(commands.Cog):
                     await th.delete()
                 except discord.HTTPException:
                     await th.send(f"User left, locking thread.")
-                    await th.remove_user(payload.user)
+                    await th.remove_user(member)
                     await th.edit(archived=True, locked=True)
                 await database.db.execute("DELETE FROM members_to_verify guild=? AND member=?",
-                                          (payload.guild_id, payload.user.id))
+                                          (member.guild.id, member.id))
                 await database.db.commit()
 
     @commands.Cog.listener()
@@ -86,7 +84,7 @@ class GateKeep(commands.Cog):
             else:
                 modping = member.guild.owner.mention
             await thread.send(f"{modping} {member.mention}\n{res[3]}",
-                              allowed_mentions=nextcord.AllowedMentions.all())
+                              allowed_mentions=discord.AllowedMentions.all())
 
     @commands.command()
     @commands.has_guild_permissions(manage_guild=True)

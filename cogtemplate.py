@@ -1,5 +1,4 @@
-import nextcord as discord
-from nextcord.ext import commands
+from discord.ext import commands
 
 
 class PogCog(commands.Cog):

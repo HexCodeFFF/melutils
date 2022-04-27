@@ -2,10 +2,10 @@ import asyncio
 import json
 from datetime import datetime, timedelta, timezone
 
+import discord
 import humanize
-import nextcord as discord
 from aioscheduler import TimedScheduler
-from nextcord.ext import commands
+from discord.ext import commands
 
 import database
 import modlog
@@ -21,7 +21,6 @@ class ScheduleInitCog(commands.Cog):
         global botcopy
         botcopy = bot
         self.bot = bot
-        bot.loop.create_task(start())
 
 
 async def start():
@@ -75,20 +74,20 @@ async def run_event(dbrowid, eventtype: str, eventdata: dict):
             guild = await botcopy.fetch_guild(eventdata["guild"])
             member = await guild.fetch_member(eventdata["member"])
             if eventdata["muteend"] is None:
-                await member.edit(timeout=datetime.now(tz=timezone.utc) + timedelta(days=28))
+                await member.edit(timed_out_until=datetime.now(tz=timezone.utc) + timedelta(days=28))
                 await schedule(datetime.now(tz=timezone.utc) + timedelta(days=28), "refresh_mute",
                                {"guild": member.guild.id, "member": member.id, "muteend": None})
                 logger.debug(f"Refreshed {member}'s permanent mute in {guild}")
             else:
                 muteend = datetime.fromtimestamp(eventdata["muteend"], tz=timezone.utc)
                 if muteend - datetime.now(tz=timezone.utc) > timedelta(days=28):
-                    await member.edit(timeout=datetime.now(tz=timezone.utc) + timedelta(days=28))
+                    await member.edit(timed_out_until=datetime.now(tz=timezone.utc) + timedelta(days=28))
                     await schedule(datetime.now(tz=timezone.utc) + timedelta(days=28),
                                    "refresh_mute",
                                    {"guild": member.guild.id, "member": member.id, "muteend": eventdata["muteend"]})
                     logger.debug(f"Refreshed {member}'s mute in {guild}. ends {muteend}")
                 else:
-                    await member.edit(timeout=muteend)
+                    await member.edit(timed_out_until=muteend)
                     await schedule(muteend, "unmute", {"guild": member.guild.id, "member": member.id})
                     logger.debug(f"Refreshed {member}'s mute for the last time in {guild}. ends {muteend}")
 

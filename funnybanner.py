@@ -6,10 +6,10 @@ import typing
 
 import PIL.GifImagePlugin
 import aiohttp
-import nextcord as discord
+import discord
 import twitter
 from PIL import Image
-from nextcord.ext import commands
+from discord.ext import commands
 
 import config
 from clogs import logger
@@ -243,7 +243,7 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
             resizedimage = None
             bannermessage = None
             # go through every message in the channel in decreasing order of calculated score
-            msgs = await channel.history(limit=None).flatten()
+            msgs = [message async for message in channel.history(limit=None)]
             if not msgs:
                 await ctx.reply("No messages in configured channel!")
                 return

@@ -1,7 +1,7 @@
 import typing
 from datetime import datetime, timezone
 
-from nextcord.ext import commands
+from discord.ext import commands
 
 import database
 

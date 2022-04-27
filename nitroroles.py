@@ -1,10 +1,10 @@
 import typing
 
 import aiosqlite
+import discord
 import emojis
-import nextcord as discord
-from nextcord.ext import commands
-from nextcord.http import Route
+from discord.ext import commands
+from discord.http import Route
 
 import database
 import moderation

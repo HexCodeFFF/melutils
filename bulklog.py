@@ -4,9 +4,9 @@ import io
 import re
 import typing
 
-import aiosqlite
-import nextcord as discord
-from nextcord.ext import commands
+import discord
+from discord.ext import commands
+
 import database
 import embedutils
 
@@ -57,7 +57,7 @@ class BulkLog(commands.Cog):
             "Author": f"{msg.author.mention} (@{msg.author})",
             "Content": msg.system_content,
             "Links": "\n".join([att.url for att in msg.attachments] + [emb.url for emb in msg.embeds
-                                                                       if emb.url != discord.Embed.Empty])
+                                                                       if emb.url is not None])
                      or "No Embeds or Attachments",
             "Timestamp": f"<t:{int(msg.created_at.timestamp())}:F>",
             "Message ID": str(msg.id)

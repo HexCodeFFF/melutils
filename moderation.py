@@ -4,10 +4,10 @@ import typing
 from datetime import datetime, timedelta, timezone
 
 import aiosqlite
+import discord
 import humanize
-import nextcord as discord
-from nextcord.ext import commands
-from nextcord.ext.commands import Greedy
+from discord.ext import commands
+from discord.ext.commands import Greedy
 
 import database
 import modlog
@@ -116,12 +116,12 @@ async def mute_action(member: discord.Member, mute_length: typing.Optional[timed
     if mute_length is None or mute_length > timedelta(days=28):
         # max timeout is 28days
         muteend = (datetime.now(tz=timezone.utc) + mute_length).timestamp() if mute_length else None
-        await member.edit(timeout=datetime.now(tz=timezone.utc) + timedelta(days=28))
+        await member.edit(timed_out_until=datetime.now(tz=timezone.utc) + timedelta(days=28))
         await scheduler.schedule(datetime.now(tz=timezone.utc) + timedelta(days=28),
                                  "refresh_mute", {"guild": member.guild.id, "member": member.id, "muteend": muteend})
     else:
         scheduletime = datetime.now(tz=timezone.utc) + mute_length
-        await member.edit(timeout=scheduletime)
+        await member.edit(timed_out_until=scheduletime)
         # purely cosmetic
         await scheduler.schedule(scheduletime, "unmute", {"guild": member.guild.id, "member": member.id})
     if mute_length is None:
@@ -550,7 +550,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 async for row in cur:
                     await scheduler.canceltask(row[0])
 
-            await member.edit(timeout=None)
+            await member.edit(timed_out_until=None)
             await ctx.reply(f"✔️ Unmuted {member.mention}")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
                                 f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id)

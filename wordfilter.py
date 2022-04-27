@@ -1,9 +1,4 @@
-import nextcord as discord
-from nextcord.ext import commands
-
-from clogs import logger
-from moderation import mod_only
-from modlog import modlog
+from discord.ext import commands
 
 
 class WordFilterCog(commands.Cog, name="Word Filter"):

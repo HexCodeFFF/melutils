@@ -3,10 +3,11 @@ import itertools
 import os
 import sqlite3
 
-import nextcord as discord
-from nextcord.ext import commands
+import discord
+from discord.ext import commands
 
 import config
+import database
 import errhandler
 import scheduler
 from admincommands import AdminCommands
@@ -14,7 +15,6 @@ from autoreaction import AutoReactionCog
 from birthday import BirthdayCog
 from bulklog import BulkLog
 from clogs import logger
-from database import InitDB
 from errhandler import ErrorHandler
 from funcommands import FunCommands
 from funnybanner import FunnyBanner
@@ -83,29 +83,36 @@ discord.Message.reply = safe_reply
 intents = discord.Intents.default()
 intents.members = True
 activity = discord.Activity(name=f"you | {config.command_prefix}help", type=discord.ActivityType.watching)
-bot = commands.Bot(command_prefix=allcasecombinations(config.command_prefix), help_command=None, case_insensitive=True,
-                   activity=activity,
-                   intents=intents, allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=False,
-                                                                             replied_user=True))
-bot.add_cog(InitDB(bot))
-bot.add_cog(ErrorHandler(bot))
-bot.add_cog(HelpCommand(bot))
-bot.add_cog(FunCommands(bot))
-bot.add_cog(AdminCommands(bot))
-bot.add_cog(UtilityCommands(bot))
-bot.add_cog(ModerationCog(bot))
-bot.add_cog(scheduler.ScheduleInitCog(bot))
-bot.add_cog(ModLogInitCog(bot))
-bot.add_cog(FunnyBanner(bot))
-bot.add_cog(MacroCog(bot))
-bot.add_cog(AutoReactionCog(bot))
-bot.add_cog(ThreadUtilsCog(bot))
-bot.add_cog(BirthdayCog(bot))
-bot.add_cog(NitroRolesCog(bot))
-bot.add_cog(BulkLog(bot))
-bot.add_cog(ExperienceCog(bot))
-bot.add_cog(GateKeep(bot))
-bot.add_cog(BibleCog(bot))
+
+
+class MyBot(commands.Bot):
+    async def setup_hook(self):
+        await database.create_db()
+        await bot.add_cog(ErrorHandler(bot))
+        await bot.add_cog(HelpCommand(bot))
+        await bot.add_cog(FunCommands(bot))
+        await bot.add_cog(AdminCommands(bot))
+        await bot.add_cog(UtilityCommands(bot))
+        await bot.add_cog(ModerationCog(bot))
+        await bot.add_cog(scheduler.ScheduleInitCog(bot))
+        await bot.add_cog(ModLogInitCog(bot))
+        await bot.add_cog(FunnyBanner(bot))
+        await bot.add_cog(MacroCog(bot))
+        await bot.add_cog(AutoReactionCog(bot))
+        await bot.add_cog(ThreadUtilsCog(bot))
+        await bot.add_cog(BirthdayCog(bot))
+        await bot.add_cog(NitroRolesCog(bot))
+        await bot.add_cog(BulkLog(bot))
+        await bot.add_cog(ExperienceCog(bot))
+        await bot.add_cog(GateKeep(bot))
+        await bot.add_cog(BibleCog(bot))
+        await scheduler.start()
+
+
+bot = MyBot(command_prefix=allcasecombinations(config.command_prefix), help_command=None, case_insensitive=True,
+            activity=activity,
+            intents=intents, allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=False,
+                                                                      replied_user=True))
 
 
 def logcommand(cmd):

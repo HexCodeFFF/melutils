@@ -2,14 +2,13 @@ import asyncio
 import io
 import typing
 
-import aiosqlite
-import nextcord as discord
-from nextcord.ext import commands
+import discord
+from discord.ext import commands
 
+import database
 from clogs import logger
 from moderation import mod_only
 from modlog import modlog
-import database
 
 
 class AutoReactionCog(commands.Cog, name="AutoReaction"):
@@ -74,7 +73,7 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
         list all autoreaction rules
         """
         async with database.db.execute("SELECT * FROM auto_reactions WHERE guild=?",
-                              (ctx.guild.id,)) as cursor:
+                                       (ctx.guild.id,)) as cursor:
             arrules = await cursor.fetchall()
         outstr = f"{len(arrules)} autoreaction rule{'' if len(arrules) == 1 else 's'}:\n"
         for rule in arrules:
@@ -94,14 +93,15 @@ class AutoReactionCog(commands.Cog, name="AutoReaction"):
     async def on_message(self, message: discord.Message):
         parentid = message.channel.parent_id if isinstance(message.channel, discord.Thread) else -1
         async with database.db.execute("SELECT * FROM auto_reactions WHERE channel=? "
-                              "OR (react_to_threads=true AND channel=?)",
-                              (message.channel.id, parentid)) as cursor:
+                                       "OR (react_to_threads=true AND channel=?)",
+                                       (message.channel.id, parentid)) as cursor:
             async for emid in cursor:
                 emoji = discord.utils.get(message.guild.emojis, id=emid[2])
                 if emoji is None:
-                    await database.db.execute("DELETE FROM auto_reactions WHERE channel=? AND emoji=?", (emid[1], emid[2]))
+                    await database.db.execute("DELETE FROM auto_reactions WHERE channel=? AND emoji=?",
+                                              (emid[1], emid[2]))
                     await database.db.commit()
                     await modlog(f"Removed autoreaction rule from {message.channel.mention} because emoji with id "
-                                 f"`{emid[2]}` no longer exists.", message.guild.id,db=db)
+                                 f"`{emid[2]}` no longer exists.", message.guild.id)
                 else:
                     asyncio.create_task(message.add_reaction(emoji))
