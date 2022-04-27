@@ -249,7 +249,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     if msg.reference:
                         if msg.reference.resolved:
                             embed.add_field(name=f"Replying to *{msg.reference.resolved.author.display_name}*",
-                                            value=msg.reference.resolved.content)
+                                            value=msg.reference.resolved.content or "`NO CONTENT`")
                     # attachments
                     filecoros = [att.to_file() for att in msg.attachments] + \
                                 [url_to_dfile(sticker.url, sticker.name) for sticker in msg.stickers] + \
