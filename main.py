@@ -80,8 +80,8 @@ def allcasecombinations(s):
 # override .reply()
 discord.Message.reply = safe_reply
 
-intents = discord.Intents.default()
-intents.members = True
+intents = discord.Intents.all()
+intents.presences = False
 activity = discord.Activity(name=f"you | {config.command_prefix}help", type=discord.ActivityType.watching)
 
 
@@ -109,7 +109,8 @@ class MyBot(commands.Bot):
         await scheduler.start()
 
 
-bot = MyBot(command_prefix=allcasecombinations(config.command_prefix), help_command=None, case_insensitive=True,
+bot = MyBot(command_prefix=commands.when_mentioned_or(*allcasecombinations(config.command_prefix)), help_command=None,
+            case_insensitive=True,
             activity=activity,
             intents=intents, allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=False,
                                                                       replied_user=True))
