@@ -245,7 +245,7 @@ class UtilityCommands(commands.Cog, name="Utility"):
                     embed = discord.Embed()
                     embed.set_author(name=msg.author.display_name, icon_url=msg.author.avatar.url)
                     embed.timestamp = msg.created_at
-                    embed.description = msg.content
+                    embed.description = msg.content or "`NO CONTENT`"
                     if msg.reference:
                         if msg.reference.resolved:
                             embed.add_field(name=f"Replying to *{msg.reference.resolved.author.display_name}*",
