@@ -54,6 +54,23 @@ def slice_per(l, n):
     return [l[i:i + n] for i in range(0, len(l), n)]
 
 
+async def url_to_dfile(url: str, name: str) -> discord.File:
+    buf = io.BytesIO()
+    buf.write(await saveurl(url))
+    buf.seek(0)
+    return discord.File(buf, filename=name + "." + url.split(".")[-1])
+
+
+def all_emojis_from_content(content: str) -> typing.List[discord.PartialEmoji]:
+    emojos = []
+    for ematch in re.finditer(discord.PartialEmoji._CUSTOM_EMOJI_RE, content):
+        try:
+            emojos.append(discord.PartialEmoji.from_str(ematch.group(0)))
+        except Exception as e:
+            print(e)
+    return emojos
+
+
 class UtilityCommands(commands.Cog, name="Utility"):
     """
     miscellaneous utility commands
@@ -233,8 +250,11 @@ class UtilityCommands(commands.Cog, name="Utility"):
                         if msg.reference.resolved:
                             embed.add_field(name=f"Replying to *{msg.reference.resolved.author.display_name}*",
                                             value=msg.reference.resolved.content)
-                    await destination.send(embeds=[embed] + msg.embeds,
-                                           files=await asyncio.gather(*[att.to_file() for att in msg.attachments]))
+                    # attachments
+                    filecoros = [att.to_file() for att in msg.attachments] + \
+                                [url_to_dfile(sticker.url, sticker.name) for sticker in msg.stickers] + \
+                                [url_to_dfile(em.url, em.name) for em in all_emojis_from_content(msg.content)]
+                    await destination.send(embeds=[embed] + msg.embeds, files=await asyncio.gather(*filecoros))
                     count += 1
                 except Exception as e:
                     await destination.send(f"Failed to clone message {msg.id}\n```{e}```")
