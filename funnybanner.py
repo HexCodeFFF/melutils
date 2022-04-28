@@ -209,12 +209,7 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                 await ctx.reply("Guild does not support banners.")
                 return
             banner_url = await self.get_random_media_from_user("Amazingpapers")
-            async with aiohttp.ClientSession(headers={'Connection': 'keep-alive'}) as session:
-                async with session.get(banner_url) as resp:
-                    if resp.status == 200:
-                        url_bytes = await resp.read()
-                    else:
-                        raise Exception(f"status {resp.status}")
+            url_bytes, _ = await resize_url(banner_url)
             await ctx.guild.edit(banner=bytes(url_bytes))
             await ctx.reply(f"✔️ Set guild banner to {banner_url}")
 
@@ -237,6 +232,7 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
     async def topbanner(self, ctx: commands.Context, preview: bool = False):
         async with ctx.typing():
             server = self.bot.get_guild(829973626442088468)
+            assert ctx.guild == server
             channel = server.get_channel(908859472288551015)
             # upvote = discord.utils.get(server.emojis, id=830090068961656852)
             # downvote = discord.utils.get(server.emojis, id=830090093788004352)
@@ -291,6 +287,8 @@ class FunnyBanner(commands.Cog, name="Funny Banner"):
                         allowed_mentions=discord.AllowedMentions(everyone=False, users=True, roles=False,
                                                                  replied_user=True))
                     await bannermessage.delete()
+            else:
+                await ctx.reply(f"No banner found!")
 
     @commands.command()
     @commands.is_owner()
