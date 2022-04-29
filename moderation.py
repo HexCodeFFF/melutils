@@ -105,8 +105,12 @@ async def ban_action(user: typing.Union[discord.User, discord.Member], guild: di
                             guild.id, user.id)
 
 
+def is_timedout(member: discord.Member):
+    return member.timed_out_until is not None and member.timed_out_until > datetime.now(tz=timezone.utc)
+
+
 async def mute_action(member: discord.Member, mute_length: typing.Optional[timedelta], reason: str):
-    if member.timeout is not None:
+    if is_timedout(member):
         return False
     htime = humanize.precisedelta(mute_length)
     if await is_mod(member.guild, member):
@@ -116,27 +120,27 @@ async def mute_action(member: discord.Member, mute_length: typing.Optional[timed
     if mute_length is None or mute_length > timedelta(days=28):
         # max timeout is 28days
         muteend = (datetime.now(tz=timezone.utc) + mute_length).timestamp() if mute_length else None
-        await member.edit(timed_out_until=datetime.now(tz=timezone.utc) + timedelta(days=28))
+        await member.timeout(datetime.now(tz=timezone.utc) + timedelta(days=28), reason=reason)
         await scheduler.schedule(datetime.now(tz=timezone.utc) + timedelta(days=28),
                                  "refresh_mute", {"guild": member.guild.id, "member": member.id, "muteend": muteend})
     else:
         scheduletime = datetime.now(tz=timezone.utc) + mute_length
-        await member.edit(timed_out_until=scheduletime)
+        await member.timeout(scheduletime, reason=reason)
         # purely cosmetic
         await scheduler.schedule(scheduletime, "unmute", {"guild": member.guild.id, "member": member.id})
     if mute_length is None:
         try:
             await member.send(f"You were permanently muted in **{member.guild.name}** with reason "
                               f"`{reason}`.")
-        except (discord.Forbidden, discord.HTTPException, AttributeError):
-            logger.debug("pass")
+        except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
+            logger.debug(e)
     else:
 
         try:
             await member.send(f"You were muted in **{member.guild.name}** for **{htime}** with reason "
                               f"`{reason}`.")
-        except (discord.Forbidden, discord.HTTPException, AttributeError):
-            logger.debug("pass")
+        except (discord.Forbidden, discord.HTTPException, AttributeError) as e:
+            logger.debug(e)
     return True
 
 
@@ -266,7 +270,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         # delete unmute events if someone manually untimed out
-        if before.timeout is not None and after.timeout is None:  # if muted role manually removed
+        if is_timedout(before) is not None and is_timedout(after) is None:  # if muted role manually removed
             actuallycancelledanytasks = False
             async with database.db.execute("SELECT id FROM schedule WHERE json_extract(eventdata, \"$.guild\")=? "
                                            "AND json_extract(eventdata, \"$.member\")=? AND (eventtype=? OR "
@@ -550,7 +554,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
                 async for row in cur:
                     await scheduler.canceltask(row[0])
 
-            await member.edit(timed_out_until=None)
+            await member.timeout(None)
             await ctx.reply(f"✔️ Unmuted {member.mention}")
             await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) unmuted"
                                 f" {member.mention} (`{member}`)", ctx.guild.id, member.id, ctx.author.id)
