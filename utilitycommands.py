@@ -616,6 +616,14 @@ class UtilityCommands(commands.Cog, name="Utility"):
             await ctx.author.send(file=discord.File(buf, filename="out.html"))
 
     @commands.command()
+    @commands.bot_has_guild_permissions(manage_emojis=True)
+    @commands.has_guild_permissions(manage_emojis=True)
+    async def removeemoji(self, ctx: commands.Context, *, emoji: discord.Emoji):
+        assert emoji.guild == ctx.guild
+        await emoji.delete()
+        await ctx.reply("✔️ emoji deleted")
+
+    @commands.command()
     async def id(self, ctx: commands.Context,
                  obj: typing.Union[discord.abc.GuildChannel, discord.User, discord.Guild,
                                    discord.Thread, discord.PartialEmoji, discord.Role,
