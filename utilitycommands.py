@@ -624,6 +624,14 @@ class UtilityCommands(commands.Cog, name="Utility"):
         await ctx.reply("✔️ emoji deleted")
 
     @commands.command()
+    @commands.bot_has_guild_permissions(manage_emojis=True)
+    @commands.has_guild_permissions(manage_emojis=True)
+    async def removesticker(self, ctx: commands.Context, *, sticker: discord.GuildSticker):
+        assert sticker.guild == ctx.guild
+        await sticker.delete()
+        await ctx.reply("✔️ sticker deleted")
+
+    @commands.command()
     async def id(self, ctx: commands.Context,
                  obj: typing.Union[discord.abc.GuildChannel, discord.User, discord.Guild,
                                    discord.Thread, discord.PartialEmoji, discord.Role,
