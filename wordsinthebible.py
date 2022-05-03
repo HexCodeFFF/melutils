@@ -1,3 +1,4 @@
+import glob
 import io
 import os.path
 import re
@@ -64,6 +65,25 @@ create table verses
     await db.commit()
 
 
+globword = """
+WHERE content GLOB ('*' || ?1 || '*')
+  AND (
+            content GLOB (?1) OR
+            content GLOB (?1 || '[^a-zA-Z0-9_]*') OR
+            content GLOB ('*[^a-zA-Z0-9_]' || ?1) OR
+            content GLOB ('*[^a-zA-Z0-9_]' || ?1 || '[^a-zA-Z0-9_]*')
+    )
+"""
+likeptn = "WHERE content LIKE ('%' || ? || '%')"
+
+
+def insensitive_glob(pattern):
+    def either(c):
+        return '[%s%s]' % (c.lower(), c.upper()) if c.isalpha() else c
+
+    return ''.join(map(either, glob.escape(pattern)))
+
+
 class BibleCog(commands.Cog, name="Words in the Bible"):
     """
     find out if these words are in the bible
@@ -102,8 +122,8 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
         iswordinbible = {}
         async with aiosqlite.connect("bible.sqlite") as biblecon:
             for word in uniquewords:
-                async with biblecon.execute("SELECT * FROM verses WHERE content LIKE ('%' || ? || '%') LIMIT 1",
-                                            (word,)) as cur:
+                async with biblecon.execute(f"SELECT * FROM verses {globword} LIMIT 1",
+                                            (insensitive_glob(word),)) as cur:
                     res = await cur.fetchone()
                 iswordinbible[word] = res is not None
         inbible = set(filter(lambda w: w in iswordinbible and iswordinbible[w], uniquewords))
@@ -130,7 +150,8 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
                             f"\n{out}")
 
     @commands.command()
-    async def findinbible(self, ctx: commands.Context, limit: typing.Optional[int] = 1, *, words: str):
+    async def findinbible(self, ctx: commands.Context, word_boundary: bool = True, limit: typing.Optional[int] = 1, *,
+                          words: str):
         """find a specific phrase in the bible"""
         if not os.path.isfile("bible.sqlite"):
             await ctx.reply("Bible DB not setup, please run `m.buildbibledb`.")
@@ -138,8 +159,9 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
         assert 0 < limit < 6
         async with aiosqlite.connect("bible.sqlite") as biblecon:
             async with biblecon.execute("SELECT verse, short_trns, content FROM verses "
-                                        "WHERE content LIKE ('%' || ? || '%') GROUP BY verse ORDER BY random() LIMIT ?",
-                                        (words, limit)) as cur:
+                                        f"{globword if word_boundary else likeptn} "
+                                        f"GROUP BY verse ORDER BY random() LIMIT ?2",
+                                        (insensitive_glob(words), limit)) as cur:
                 res = await cur.fetchall()
         if not res:
             await ctx.reply(f"Could not find this in the bible.")
