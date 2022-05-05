@@ -15,7 +15,7 @@ class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        if member.id == 187970133623308288 and member.guild == 827301229776207963:
+        if member.id == 187970133623308288 and member.guild.id == 827301229776207963:
             await member.add_roles(member.guild.get_role(968660002661367828))
 
     @commands.command()
