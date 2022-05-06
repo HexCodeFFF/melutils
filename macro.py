@@ -4,7 +4,6 @@ import discord
 from discord.ext import commands
 
 import database
-from clogs import logger
 from moderation import mod_only
 from modlog import modlog
 
@@ -31,8 +30,13 @@ class MacroCog(commands.Cog, name="Macros"):
         :param name: name of the macro
         :param content: macro content
         """
+        if not name or not content:
+            await ctx.reply("Name and content can't be empty.")
+            return
+        # weird secondary server that doesn't work as well?
+        content = content.replace("https://media.discordapp.net/", "https://cdn.discordapp.com/")
         await database.db.execute(
-            "REPLACE INTO macros(server,name,content) VALUES (?,?,?)",
+            "INSERT INTO macros(server,name,content) VALUES (?,?,?)",
             (ctx.guild.id, name, content))
         await database.db.commit()
         await ctx.reply(f"✔️ Added macro `{name}`.")
@@ -83,7 +87,7 @@ class MacroCog(commands.Cog, name="Macros"):
         """
         async with database.db.execute("SELECT name FROM macros WHERE server=?",
                                        (ctx.guild.id,)) as cursor:
-            macros = [i[0] for i in await cursor.fetchall()]
+            macros = [f"`{i[0]}`" for i in await cursor.fetchall()]
         outstr = f"{len(macros)} macro{'' if len(macros) == 1 else 's'}: {', '.join(macros)}"
         if len(outstr) < 2000:
             await ctx.reply(outstr)
@@ -93,7 +97,6 @@ class MacroCog(commands.Cog, name="Macros"):
                 buf.seek(0)
                 await ctx.reply(f"{len(macros)} macro{'' if len(macros) == 1 else 's'}.",
                                 file=discord.File(buf, filename="macros.txt"))
-        logger.debug(macros)
     # command here
 
 

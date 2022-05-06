@@ -1,3 +1,4 @@
+-- we don't know how to generate root <with-no-name> (class Root) :(
 create table auto_punishment
 (
     guild               int  not null,
@@ -65,7 +66,18 @@ create table macros
     name    text not null,
     content text not null,
     constraint macros_pk
-        primary key (server, name)
+        primary key (server, name),
+    constraint contentc
+        check (content <> ''),
+    constraint namec
+        check (name <> '')
+);
+
+create table members_to_verify
+(
+    guild  integer,
+    member integer,
+    thread integer
 );
 
 create table modlog
@@ -89,35 +101,21 @@ create table schedule
 
 create table server_config
 (
-    guild               int not null
-        constraint server_config_pk
-            primary key,
-    mod_role            int,
-    log_channel         int,
-    ban_appeal_link     text,
-    thin_ice_role       int,
-    thin_ice_threshold  int   default 1 not null,
-    birthday_category   int,
-    booster_roles       bool  default 0 not null,
-    booster_role_hoist  int,
-    bulk_log_channel    int,
-    time_between_xp     float default 60 not null,
-    xp_change_per_level float default 30 not null
-);
-
-create table sqlite_master
-(
-    type     text,
-    name     text,
-    tbl_name text,
-    rootpage int,
-    sql      text
-);
-
-create table sqlite_sequence
-(
-    name,
-    seq
+    guild                int,
+    mod_role             int,
+    log_channel          int,
+    ban_appeal_link      text,
+    thin_ice_role        int,
+    thin_ice_threshold   int,
+    birthday_category    int,
+    booster_roles        BOOL,
+    booster_role_hoist   int,
+    bulk_log_channel     int,
+    time_between_xp      float,
+    xp_change_per_level  float,
+    verification_channel integer,
+    verified_role        integer,
+    verification_text    text
 );
 
 create table thin_ice
