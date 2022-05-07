@@ -64,21 +64,30 @@ async def safe_reply(self: discord.Message, *args, **kwargs) -> discord.Message:
         await self.channel.fetch_message(self.id)
         # reference copy of .reply() since this func will override .reply()
         return await self.orig_reply(*args, **kwargs)
-    # for some reason doesnt throw specific error. if its unrelated httpexception itll just throw again and fall to the
+    # for some reason doesnt throw specific error
+    # if its unrelated httpexception itll just throw again and fall to the
     # error handler hopefully
     except (discord.errors.NotFound, discord.errors.HTTPException) as e:
         logger.debug(f"abandoning reply to {self.id} due to {errhandler.get_full_class_name(e)}, "
                      f"sending message in {self.channel.id}.")
-        return await self.channel.send(*args, **kwargs)
+        # mention author
+        author = self.author.mention
+        if len(args):
+            content = author + (args[0] or "")[:2000 - len(author)]
+        else:
+            content = author
+        return await self.channel.send(content, **kwargs, allowed_mentions=discord.AllowedMentions(
+            everyone=False, users=True, roles=False, replied_user=True))
+
+
+# override .reply()
+discord.Message.reply = safe_reply
 
 
 def allcasecombinations(s):
     # https://stackoverflow.com/a/71655076/9044183
     return list({''.join(x) for x in itertools.product(*zip(s.upper(), s.lower()))})
 
-
-# override .reply()
-discord.Message.reply = safe_reply
 
 intents = discord.Intents.all()
 intents.presences = False

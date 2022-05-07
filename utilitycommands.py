@@ -160,10 +160,10 @@ class UtilityCommands(commands.Cog, name="Utility"):
         oldest_first: typing.Optional[bool] = None
         clean: bool = True
 
-    @commands.command(aliases=["apurge", "advpurge", "adp", "apg"])
+    @commands.command(aliases=["apurge", "advpurge", "adp", "apg", "ap"])
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
-    async def advancedpurge(self, ctx, *, opts: AdvancedPurgeSettings):
+    async def advancedpurge(self, ctx: commands.Context, *, opts: AdvancedPurgeSettings):
         """
         like m.purge but with more options
 
@@ -194,12 +194,12 @@ class UtilityCommands(commands.Cog, name="Utility"):
         if check:
             pargs['check'] = check
         for flag, value in opts:
-            if flag not in ["include", "exclude", "clean_purge"] and value:
+            if flag not in ["include", "exclude", "clean"] and value:
                 pargs[flag] = value
         if opts.clean:
             await ctx.message.delete()
         deleted = await ctx.channel.purge(**pargs)
-        msg = f"{config.emojis['check']}Deleted `{len(deleted)}` message{'' if len(deleted) == 1 else 's'}!"
+        msg = f"{config.emojis['check']} Deleted `{len(deleted)}` message{'' if len(deleted) == 1 else 's'}!"
         if opts.clean:
             await ctx.send(msg, delete_after=10)
         else:

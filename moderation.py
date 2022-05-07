@@ -9,6 +9,7 @@ import humanize
 from discord.ext import commands
 from discord.ext.commands import Greedy
 
+import config
 import database
 import modlog
 import scheduler
@@ -941,7 +942,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
         else:
             await ctx.reply(f"❌ Server has no rule for {point_count} point{'' if point_count == 1 else 's'}!")
 
-    @commands.command(aliases=["listautopunishments", "listap", "ap", "aps"])
+    @commands.command(aliases=["listautopunishments", "listap", "aps"])
     @mod_only()
     async def autopunishments(self, ctx):
         """
@@ -962,7 +963,7 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @commands.command()
     @commands.has_permissions(manage_messages=True)
     @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
-    async def purge(self, ctx, num_messages: int):
+    async def purge(self, ctx: commands.Context, num_messages: int, clean: bool = True):
         """
         bulk delete messages from a channel
 
@@ -970,12 +971,15 @@ class ModerationCog(commands.Cog, name="Moderation"):
         :param num_messages: number of messages before command invocation to delete
         """
         assert num_messages >= 1
-        await asyncio.gather(
-            ctx.channel.purge(before=ctx.message, limit=num_messages),
-            ctx.message.delete(),
-            modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) purged {num_messages} message(s) from "
-                          f"{ctx.channel.mention}", ctx.guild.id, modid=ctx.author.id)
-        )
+        deleted = await ctx.channel.purge(before=ctx.message, limit=num_messages)
+        msg = f"{config.emojis['check']} Deleted `{len(deleted)}` message{'' if len(deleted) == 1 else 's'}!"
+        if clean:
+            await ctx.send(msg, delete_after=10)
+        else:
+            await ctx.reply(msg)
+        await ctx.message.delete()
+        await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) purged {len(deleted)} message(s) from "
+                            f"{ctx.channel.mention}", ctx.guild.id, modid=ctx.author.id)
 
     @mod_only()
     @commands.command(aliases=["unlock", "unlockchannel", "lockch", "lockc", "lchannel"])
