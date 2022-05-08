@@ -1,3 +1,4 @@
+import difflib
 import io
 
 import discord
@@ -75,9 +76,14 @@ class MacroCog(commands.Cog, name="Macros"):
         async with database.db.execute("SELECT content FROM macros WHERE server=? AND name=?",
                                        (ctx.guild.id, name)) as cur:
             result = await cur.fetchone()
-        if result is None or result[0] is None:
-            await ctx.reply("⚠️ No macro found with that name!")
-        else:
+        returned_result = result is not None and result[0] is not None
+        if not returned_result:
+            async with database.db.execute("SELECT name FROM macros WHERE server=?",
+                                           (ctx.guild.id,)) as cursor:
+                macros = [res[0] for res in await cursor.fetchall()]
+            match = difflib.get_close_matches(name, macros, n=1, cutoff=0)[0]
+            await ctx.reply(f"⚠️ No macro found with that name. Did you mean `{ctx.prefix}{ctx.invoked_with} {match}`?")
+        if returned_result:
             await ctx.send(result[0], reference=ctx.message.reference)
 
     @commands.command(aliases=["listmacros", "allmacros", "lm"])

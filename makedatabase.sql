@@ -62,9 +62,9 @@ create table lockedchannelperms
 
 create table macros
 (
-    server  int  not null,
-    name    text not null,
-    content text not null,
+    server  int                 not null,
+    name    text collate NOCASE not null,
+    content text                not null,
     constraint macros_pk
         primary key (server, name),
     constraint contentc
