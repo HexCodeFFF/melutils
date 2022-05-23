@@ -150,7 +150,8 @@ class BibleCog(commands.Cog, name="Words in the Bible"):
                             f"\n{out}")
 
     @commands.command()
-    async def findinbible(self, ctx: commands.Context, word_boundary: bool = True, limit: typing.Optional[int] = 1, *,
+    async def findinbible(self, ctx: commands.Context, word_boundary: typing.Optional[bool] = True,
+                          limit: typing.Optional[int] = 1, *,
                           words: str):
         """find a specific phrase in the bible"""
         if not os.path.isfile("bible.sqlite"):
