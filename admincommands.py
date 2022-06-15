@@ -13,10 +13,19 @@ class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
     def __init__(self, bot):
         self.bot = bot
 
+    # fuck you, hardcoded shit for me
+
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         if member.id == 187970133623308288 and member.guild.id == 827301229776207963:
             await member.add_roles(member.guild.get_role(968660002661367828))
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        if after.guild.id == 829973626442088468:  # hos
+            if len(after.roles) > len(before.roles):  # gained new roles
+                if after.guild.get_role(955703823500988426) not in after.roles:  # not verified
+                    await after.remove_roles(*after.roles)  # remove roles
 
     @commands.command()
     @commands.is_owner()

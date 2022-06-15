@@ -36,6 +36,14 @@ async def fetch_all(session, urls):
     return results
 
 
+async def ignore_error(coro):
+    try:
+        return await coro
+    except Exception as e:
+        print(e)
+        return None
+
+
 async def saveurl(url) -> bytes:
     """
     save a url to bytes
@@ -315,18 +323,19 @@ class UtilityCommands(commands.Cog, name="Utility"):
                 if len(msg.embeds):
                     for embed in msg.embeds:
                         if embed.type in ["image", "video", "audio", "gifv"]:
-                            files.append(saveurl(embed.url))
+                            files.append(ignore_error(saveurl(embed.url)))
                             exts.append(embed.url.split(".")[-1])
                 if len(msg.attachments):
                     for att in msg.attachments:
-                        files.append(att.read())
+                        files.append(ignore_error(att.read()))
                         exts.append(att.url.split(".")[-1])
             filebytes = await asyncio.gather(*files)
             with io.BytesIO() as archive:
                 with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as zip_archive:
                     for i, f in enumerate(filebytes):
-                        zip_archive.writestr(f"{i}.{exts[i]}",
-                                             bytes(f))
+                        if f:
+                            zip_archive.writestr(f"{i}.{exts[i]}",
+                                                 bytes(f))
                 archive.seek(0, 2)
                 size = archive.tell()
                 archive.seek(0)
