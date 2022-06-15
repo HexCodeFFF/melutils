@@ -25,7 +25,8 @@ class AdminCommands(commands.Cog, command_attrs=dict(hidden=True)):
         if after.guild.id == 829973626442088468:  # hos
             if len(after.roles) > len(before.roles):  # gained new roles
                 if after.guild.get_role(955703823500988426) not in after.roles:  # not verified
-                    await after.remove_roles(*[role for role in after.roles if role.is_assignable()])  # remove roles
+                    await after.remove_roles(*[role for role in after.roles if role.is_assignable()],
+                                             atomic=False)  # remove roles
 
     @commands.command()
     @commands.is_owner()
