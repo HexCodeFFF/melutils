@@ -489,6 +489,37 @@ class ModerationCog(commands.Cog, name="Moderation"):
                                     f"`{reason}`.", ctx.guild.id, member.id,
                                     ctx.author.id)
 
+    @commands.command(aliases=["k", "boot", "eject"])
+    @commands.bot_has_permissions(ban_members=True)
+    @mod_only()
+    async def kick(self, ctx: commands.Context, members: Greedy[discord.User], *, reason: str = "No reason provided."):
+        """
+        kick one or more members
+
+        :param ctx: discord context
+        :param members: one or more members to kick
+        :param reason: why the user was kicked.
+        """
+        if not members:
+            await ctx.reply("❌ members is a required argument that is missing.")
+            return
+        for member in members:
+            try:
+                await ctx.guild.kick(member, reason=reason)
+            except discord.Forbidden:
+                await ctx.reply(f"❌ Failed to kick {member.mention}. Are they banned or a mod?")
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) tried to kick "
+                                    f"{member.mention} (`{member}`) with reason "
+                                    f"`{reason}`, but it failed. ", ctx.guild.id,
+                                    member.id, ctx.author.id)
+            else:
+                await ctx.reply(
+                    f"✔ Kicked **{member.mention}** with reason `{reason}️`")
+                await modlog.modlog(f"{ctx.author.mention} (`{ctx.author}`) kicked"
+                                    f" {member.mention} (`{member}`) with reason "
+                                    f"`{reason}`", ctx.guild.id, member.id,
+                                    ctx.author.id)
+
     @commands.command(aliases=["mu"])
     @commands.bot_has_permissions(manage_roles=True)
     @mod_only()
